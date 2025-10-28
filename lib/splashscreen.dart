@@ -30,6 +30,4 @@ class Splashscreen extends StatefulWidget{
    }
   }
   
-  class AkTest {
- 
-  }
+  
