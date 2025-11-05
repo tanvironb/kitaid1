@@ -1,23 +1,10 @@
+
 import 'package:flutter/material.dart';
-import 'package:kitaid1/splashscreen.dart';
+import 'package:kitaid1/kitaid.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const kitaid());
+  
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-       
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const Splashscreen());
-  }
-}
 

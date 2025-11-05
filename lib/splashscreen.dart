@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kitaid1/main.dart';
 
 class Splashscreen extends StatefulWidget{
-  const Splashscreen({Key? key}) :super(key: key);
+  const Splashscreen({super.key});
   
 
   @override
