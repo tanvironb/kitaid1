@@ -24,7 +24,9 @@ class LoginScreen extends StatelessWidget {
                   style: Theme.of(context)
                       .textTheme
                       .headlineLarge
-                      ?.copyWith(color: Colors.white),
+                      ?.copyWith(color: Colors.white, 
+                      letterSpacing: 4),
+                      
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: mysizes.spacebtwsections),
@@ -94,6 +96,7 @@ class LoginScreen extends StatelessWidget {
                       elevation: 0,
                     ),
                     child: const Text('Login'),
+                    
                   ),
                 ),
                 ),

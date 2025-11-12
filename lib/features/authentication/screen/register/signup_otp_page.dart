@@ -96,7 +96,7 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
                   // Verify button
                   Center(
                  child: SizedBox(
-                   width: 180, // ✅ set your desired button width
+                   width: 180, //  set your desired button width
                    child: ElevatedButton(
                      onPressed: (_otp.length == 4 && !_verifying) ? _verify : null,
                      style: ElevatedButton.styleFrom(
