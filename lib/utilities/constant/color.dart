@@ -30,4 +30,6 @@ static const Color warningprinmary = Color.fromARGB(255, 255, 20, 20);
 //neutral color
 static const Color disabledprimary = Color.fromARGB(204, 156, 156, 156);
 
+  static get iconColor => null;
+
 }
