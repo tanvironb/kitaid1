@@ -22,7 +22,7 @@ class kitaid extends StatelessWidget {
       // light theme
       theme: mytheme.LightTheme,
       //home: const SignUpOtpPage(phoneNumber: '', signupPayload: {},));
-      home: const Splashscreen());
+      home: const SettingsPage());
   }
 }
 
