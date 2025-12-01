@@ -7,6 +7,7 @@ import 'package:kitaid1/features/notifications/notification_page.dart';
 import 'package:kitaid1/features/services/services_page.dart';
 import 'package:kitaid1/features/settings/privacy_policy_page.dart';
 import 'package:kitaid1/features/settings/settings_page.dart';
+import 'package:kitaid1/splashscreen.dart';
 import 'package:kitaid1/utilities/theme/theme.dart';
 
 class kitaid extends StatelessWidget {
@@ -21,7 +22,7 @@ class kitaid extends StatelessWidget {
       // light theme
       theme: mytheme.LightTheme,
       //home: const SignUpOtpPage(phoneNumber: '', signupPayload: {},));
-      home: const PrivacyPolicyPage());
+      home: const Splashscreen());
   }
 }
 

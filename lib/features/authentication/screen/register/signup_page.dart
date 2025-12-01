@@ -1,6 +1,5 @@
 // lib/features/auth/signup/signup_page.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
@@ -74,37 +73,26 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _loading = true);
 
     // TODO: Call your backend to create a pending user & send OTP to _phone.text
-    // Simulate a short delay:
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
     setState(() => _loading = false);
 
-    // Navigate to OTP page, pass the phone (and anything else you need)
+    // 👉 Navigate to OTP page
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => SignUpOtpPage(
           phoneNumber: _phone.text.trim(),
-          // You can pass any payload needed for final account creation
           signupPayload: {
             'name': _name.text.trim(),
             'ic': _ic.text.trim(),
             'email': _email.text.trim(),
             'phone': _phone.text.trim(),
-            // Don't pass password in plain text to a real screen in a real app;
-            // for demo we keep it, but you’d handle securely with backend/session.
             'password': _password.text,
           },
         ),
       ),
-    );
-  }
-
-  InputDecoration _decoration(String label, {Widget? suffix}) {
-    return InputDecoration(
-      labelText: label,
-      suffixIcon: suffix,
     );
   }
 
@@ -118,203 +106,192 @@ class _SignUpPageState extends State<SignUpPage> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(15.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ===== Header =====
-                Text(
-                  mytitle.signupTitle, // "signup"
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineLarge
-                      ?.copyWith(color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-                Column(
-                  children: [
-                    const Text(
-                      'Create Your Account',
-                      style: TextStyle(color: Colors.white,fontSize:mysizes.fontSm ),
-                    ),
-                    const SizedBox(height: mysizes.sm),
-                  ]
-                ),
-                const SizedBox(height: 80),
-
-
- // Name
-                   Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center, 
-                   children: [
-                    TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  decoration: const InputDecoration(
-                    labelText: mytitle.s_name,
-                    // force white field
-                    filled: true,
-                    fillColor: Colors.white,                                   
+            child: Form(
+              key: _formKey, // 👈 form key
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ===== Header =====
+                  Text(
+                    mytitle.signupTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineLarge
+                        ?.copyWith(color: Colors.white),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                ],
-                ),
-                    const SizedBox(height: 12),
-                    
-
-// IC No.
-                    Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center, 
-                   children: [
-                    TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  decoration: const InputDecoration(
-                    labelText: mytitle.s_icno,
-                    // force white field
-                    filled: true,
-                    fillColor: Colors.white,                                   
-                  ),
-                ),
-                ],
-                ),
-                    const SizedBox(height: 12),
-
- // Email
-                    Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center, 
-                   children: [
-                    TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  decoration: const InputDecoration(
-                    labelText: mytitle.s_email,
-                    // force white field
-                    filled: true,
-                    fillColor: Colors.white,                                   
-                  ),
-                ),
-                ],
-                ),
-                    const SizedBox(height: 12),
-
-// Phone
-                    Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center, 
-                   children: [
-                    TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  decoration: const InputDecoration(
-                    labelText: mytitle.phoneno,
-                    // force white field
-                    filled: true,
-                    fillColor: Colors.white,                                   
-                  ),
-                ),
-                ],
-                ),
-                    const SizedBox(height: 12),
-
-// Password
-                   Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextFormField(
-                      controller: _password,
-                       obscureText: _obscurePw, // hides password
-                      validator: _pwV,
-                      style: const TextStyle(
-                        color: mycolors.textPrimary,
-                        fontSize: mysizes.fontSm,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: mytitle.s_password, // ✅ uses your text constant
-                        filled: true,
-                        fillColor: Colors.white,       // ✅ white background
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePw ? Icons.visibility_off : Icons.visibility,
-                            color: mycolors.textPrimary,
-                          ),
-                          onPressed: () => setState(() {
-                            _obscurePw = !_obscurePw;
-                          }),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                    const SizedBox(height: 12),
-
-// Confirm Password
-                    Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextFormField(
-                        controller: _confirm,
-                        obscureText: _obscureConfirm,
-                        validator: _confirmV,
-                        style: const TextStyle(
-                          color: mycolors.textPrimary,
+                  Column(
+                    children: const [
+                      Text(
+                        'Create Your Account',
+                        style: TextStyle(
+                          color: Colors.white,
                           fontSize: mysizes.fontSm,
                         ),
-                       decoration: InputDecoration(
-                          labelText: mytitle.retypepassword, // ✅ uses your text constant
-                          filled: true,
-                          fillColor: Colors.white,           // ✅ white background
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirm ? Icons.visibility_off : Icons.visibility,
-                              color: mycolors.textPrimary,
-                            ),
-                           onPressed: () => setState(() {
-                              _obscureConfirm = !_obscureConfirm;
-                            }),
-                          ),
-                        ),
                       ),
+                      SizedBox(height: mysizes.sm),
                     ],
                   ),
-                  
+                  const SizedBox(height: 80),
 
-                    const SizedBox(height: 70),
+                  // Name
+                  TextFormField(
+                    controller: _name,
+                    validator: _req,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: mytitle.s_name,
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-// Next button – matches your wide button style
-                    Center(
-                      child: SizedBox(
-                        width: w * 0.3, // match your signup button width behavior
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _onNext,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: mycolors.bgPrimary, // adjust if needed
-                            foregroundColor: mycolors.textPrimary,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: mysizes.btnheight,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  height: 20, width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text('Next'),
+                  // IC No.
+                  TextFormField(
+                    controller: _ic,
+                    validator: _req,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: mytitle.s_icno,
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Email
+                  TextFormField(
+                    controller: _email,
+                    validator: _emailV,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: mytitle.s_email,
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Phone
+                  TextFormField(
+                    controller: _phone,
+                    validator: _phoneV,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: mytitle.phoneno,
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Password
+                  TextFormField(
+                    controller: _password,
+                    obscureText: _obscurePw,
+                    validator: _pwV,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: mytitle.s_password,
+                      filled: true,
+                      fillColor: Colors.white,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePw ? Icons.visibility_off : Icons.visibility,
+                          color: mycolors.textPrimary,
                         ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePw = !_obscurePw;
+                          });
+                        },
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Confirm Password
+                  TextFormField(
+                    controller: _confirm,
+                    obscureText: _obscureConfirm,
+                    validator: _confirmV,
+                    style: const TextStyle(
+                      color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: mytitle.retypepassword,
+                      filled: true,
+                      fillColor: Colors.white,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirm
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: mycolors.textPrimary,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirm = !_obscureConfirm;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 70),
+
+                  // Next button
+                  Center(
+                    child: SizedBox(
+                      width: w * 0.3,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _onNext,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: mycolors.bgPrimary,
+                          foregroundColor: mycolors.textPrimary,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: mysizes.btnheight,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(mysizes.borderRadiusLg),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Next'),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-        );
-      ;
-    ;
+        ),
+      ),
+    );
   }
 }

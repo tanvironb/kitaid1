@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
+import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
@@ -80,7 +82,12 @@ class LoginScreen extends StatelessWidget {
                   width:  MediaQuery.of(context).size.width * 0.3,
                   child: ElevatedButton(
                     onPressed: () {
-                      // TODO: handle login
+                       Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const HomePage(),
+                            ),
+                          );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -119,7 +126,12 @@ class LoginScreen extends StatelessWidget {
                       width:  MediaQuery.of(context).size.width * 0.3,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: navigate to signup
+                           Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SignUpPage(),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
