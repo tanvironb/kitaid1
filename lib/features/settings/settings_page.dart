@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
@@ -117,6 +118,27 @@ class _SettingsPageState extends State<SettingsPage> {
             onTap: () {},
           ),
         ],
+      ),
+      // ===== OFFICIAL KITAID NAVBAR =====
+      bottomNavigationBar: KitaBottomNav(
+        currentIndex: 4, // Settings tab active
+        onTap: (index) {
+          if (index == 4) return; // already here
+          switch (index) {
+            case 0:
+              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+              break;
+            case 1:
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              break;
+            case 2:
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              break;
+            case 3:
+              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+              break;
+          }
+        },
       ),
     );
   }
