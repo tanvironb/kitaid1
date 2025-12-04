@@ -39,6 +39,58 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _lang = lang);
   }
 
+void _showSignOutDialog() {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text("Are you sure?"),
+        content: const Text("Do you really want to sign out?"),
+        actions: [
+          // NO BUTTON (Green)
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // close popup
+            },
+            child: const Text(
+              "No",
+              style: TextStyle(
+                color: Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          // YES BUTTON (Red)
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); 
+
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                '/login',   // <-- make sure this exists
+                (route) => false,
+              );
+            },
+            child: const Text(
+              "Yes",
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,14 +134,18 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTile(
             icon: Icons.lock_outline,
             label: t('change_password'),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushNamed(context, '/change-password');
+            },
           ),
           _SettingsTile(
             icon: Icons.delete_forever_outlined,
             label: t('delete_account'),
             iconColor: mycolors.warningprinmary,
             labelStyle: TextStyle(color: mycolors.warningprinmary),
-            onTap: () {},
+            onTap: () {
+              Navigator.pushNamed(context, '/delete-account');
+            },
           ),
 
           const SizedBox(height: 28),
@@ -105,7 +161,9 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 8),
 
           _SettingsTile(icon: Icons.help_outline, label: t('faq'), onTap: () {}),
-          _SettingsTile(icon: Icons.privacy_tip_outlined, label: t('privacy'), onTap: () {}),
+          _SettingsTile(icon: Icons.privacy_tip_outlined, label: t('privacy'), onTap: () {
+            Navigator.pushNamed(context, '/privacy');
+          }),
           _SettingsTile(icon: Icons.support_agent_outlined, label: t('contact'), onTap: () {}),
 
           const SizedBox(height: 28),
@@ -115,7 +173,7 @@ class _SettingsPageState extends State<SettingsPage> {
             label: t('sign_out'),
             iconColor: mycolors.warningprinmary,
             labelStyle: TextStyle(color: mycolors.warningprinmary),
-            onTap: () {},
+            onTap: () => _showSignOutDialog(),
           ),
         ],
       ),

@@ -73,28 +73,60 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return null;
   }
 
-  Future<void> _submit() async {
-    FocusScope.of(context).unfocus();
-    if (!_formKey.currentState!.validate()) return;
+ Future<void> _submit() async {
+  FocusScope.of(context).unfocus();
+  if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _submitting = true);
-    try {
-      // TODO: connect to backend
-      await Future.delayed(const Duration(milliseconds: 900));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password updated successfully')),
-      );
-      Navigator.pop(context);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update password')),
-      );
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
+  setState(() => _submitting = true);
+
+  try {
+    // TODO: connect to backend
+    await Future.delayed(const Duration(milliseconds: 900));
+
+    if (!mounted) return;
+
+    // 1) Show popup
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text('Password Changed'),
+          content: const Text('Your password has been changed.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // just close the dialog
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // 2) After dialog is closed, go to Settings page
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/settings',
+      (route) => false,
+    );
+  } catch (_) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Failed to update password')),
+    );
+  } finally {
+    if (mounted) setState(() => _submitting = false);
   }
+}
+
+
 
   @override
   Widget build(BuildContext context) {
