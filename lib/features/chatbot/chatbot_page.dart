@@ -26,19 +26,26 @@ class _ChatBotPageState extends State<ChatBotPage> {
   final ScrollController _scrollCtrl = ScrollController();
 
   /// Initial bot message (like the prototype)
-  final List<ChatMessage> _messages = const [
-    ChatMessage(
-      text: 'Hi, How can i assist you?',
-      isUser: false,
-    ),
-  ];
+  final List<ChatMessage> _messages = [
+  const ChatMessage(
+    text: 'Hi, How can i assist you?',
+    isUser: false,
+  ),
+];
 
-  void _handleSend() {
+    void _handleSend() {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
 
     setState(() {
+      // user message
       _messages.add(ChatMessage(text: text, isUser: true));
+
+      // simple fake bot reply
+      _messages.add(const ChatMessage(
+        text: 'This is a demo reply. I will be connected to real logic later.',
+        isUser: false,
+      ));
     });
 
     _textCtrl.clear();
