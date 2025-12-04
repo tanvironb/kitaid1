@@ -262,7 +262,7 @@ class _Note extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(top: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(.5),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(.5),
         borderRadius: BorderRadius.circular(mysizes.borderRadiusMd),
       ),
       child: Row(
