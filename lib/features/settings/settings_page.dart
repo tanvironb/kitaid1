@@ -121,20 +121,28 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4, // Settings tab active
+        currentIndex: 4, // <-- change this per page
         onTap: (index) {
-          if (index == 4) return; // already here
+          if (index == 0) return; // already on this page
+          
           switch (index) {
-            case 0:
+            case 0: // HOME
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
-            case 1:
+
+            case 1: // CHATBOT
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              break;
+
+            case 2: // SERVICES
               Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
-            case 2:
+
+            case 3: // NOTIFICATIONS
               Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
-            case 3:
+
+            case 4: // PROFILE / SETTINGS
               Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
               break;
           }
