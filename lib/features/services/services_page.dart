@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
@@ -174,6 +175,35 @@ class _ServicesPageState extends State<ServicesPage> {
               },
             ),
         ],
+      ),
+      // ===== OFFICIAL KITAID NAVBAR =====
+      bottomNavigationBar: KitaBottomNav(
+        currentIndex: 2, // <-- change this per page
+        onTap: (index) {
+          if (index == 2) return; // already on this page
+          
+          switch (index) {
+            case 0: // HOME
+              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+              break;
+
+            case 1: // CHATBOT
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              break;
+
+            case 2: // SERVICES
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              break;
+
+            case 3: // NOTIFICATIONS
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              break;
+
+            case 4: // PROFILE / SETTINGS
+              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+              break;
+          }
+        },
       ),
     );
   }
