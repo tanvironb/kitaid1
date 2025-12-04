@@ -123,7 +123,7 @@ class _SettingsPageState extends State<SettingsPage> {
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 4, // <-- change this per page
         onTap: (index) {
-          if (index == 0) return; // already on this page
+          if (index == 4) return; // already on this page
           
           switch (index) {
             case 0: // HOME
