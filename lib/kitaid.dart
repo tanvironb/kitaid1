@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
+import 'package:kitaid1/features/chatbot/chatbot_page.dart';
 import 'package:kitaid1/features/notifications/notification_page.dart';
 import 'package:kitaid1/features/services/services_page.dart';
 import 'package:kitaid1/features/settings/privacy_policy_page.dart';
@@ -19,7 +20,7 @@ class kitaid extends StatelessWidget {
 
       routes: {
         '/home': (_) => const HomePage(),
-        //'/chatbot': (_) => const ChatbotPage(),        
+        '/chatbot': (_) => const ChatBotPage(),        
         '/privacy-policy': (_) => const PrivacyPolicyPage(),
         '/services': (_) => const ServicesPage(),
         '/notifications': (_) => const NotificationPage(),
