@@ -15,12 +15,11 @@ class kitaid extends StatelessWidget {
     return MaterialApp(
       title: 'KitaID',
       theme: mytheme.LightTheme,
-
-      // You can keep Splashscreen as the first page:
       home: const Splashscreen(),
 
       routes: {
         '/home': (_) => const HomePage(),
+        //'/chatbot': (_) => const ChatbotPage(),        
         '/privacy-policy': (_) => const PrivacyPolicyPage(),
         '/services': (_) => const ServicesPage(),
         '/notifications': (_) => const NotificationPage(),
@@ -29,3 +28,4 @@ class kitaid extends StatelessWidget {
     );
   }
 }
+
