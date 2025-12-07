@@ -144,7 +144,7 @@ class _HomePageState extends State<HomePage> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      // ⚠️ No AppBar (as requested)
+      // ⚠ No AppBar (as requested)
       // bottomNavigationBar: KitaBottomNav(
       //   currentIndex: _currentIndex,
       //   onTabSelected: (i) {
