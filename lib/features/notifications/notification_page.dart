@@ -19,15 +19,10 @@ class _NotificationPageState extends State<NotificationPage> {
   final _controller = NotificationController();
   late Future<List<AppNotification>> _future;
 
-  // search + filter option  
-
+  // search + filter option
   final _searchCtrl = TextEditingController();
   String _query = '';
   bool _showUnreadOnly = false;
-
-/* - it loads notifications from the controller 
-   - It listens to typing in the search box and updates _query so results update instantly
-*/
 
   @override
   void initState() {
@@ -38,23 +33,19 @@ class _NotificationPageState extends State<NotificationPage> {
     });
   }
 
-// Cleans up memory when leaving the page by disposing the search controller
-
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
   }
 
-// Reloads the notifications list - refresh function
-
+  // Reloads the notifications list - refresh function
   Future<void> _refresh() async {
     setState(() {
       _future = _controller.load();
     });
     await _future;
   }
-
 
   List<AppNotification> _applyFilters(List<AppNotification> items) {
     Iterable<AppNotification> filtered = items;
@@ -64,7 +55,7 @@ class _NotificationPageState extends State<NotificationPage> {
       filtered = filtered.where((n) => !n.read);
     }
 
-    // Filter: search by name/title (case-insensitive) - shows results matching title, body, or category
+    // Filter: search by name/title (case-insensitive)
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
       filtered = filtered.where((n) {
@@ -78,30 +69,35 @@ class _NotificationPageState extends State<NotificationPage> {
     return filtered.toList();
   }
 
-// The main build method for the notification page: theme, colors. fonts...
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-// AppBar the top bar with page title
     return Scaffold(
+      // ===== APP BAR (same style as Settings header) =====
       appBar: AppBar(
-        title: const Text('Notification'),
-      actions: [
-        IconButton(
-          tooltip: 'Mark all as read',
-          icon: const Icon(Icons.done_all_outlined),
-          onPressed: () async {
-            // Marks all notifications as read
-            await _controller.markAllRead();
+        backgroundColor: mycolors.Primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Mark all as read',
+            icon: const Icon(Icons.done_all_outlined),
+            onPressed: () async {
+              // Marks all notifications as read
+              await _controller.markAllRead();
               if (mounted) _refresh(); // Reloads the list with updated colors
-      },
-    ),
-  ],
-),
+            },
+          ),
+        ],
+      ),
 
-
-// Body with refresh indicator and future builder to load notifications
+      // Body with refresh indicator and future builder to load notifications
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<List<AppNotification>>(
@@ -122,51 +118,57 @@ class _NotificationPageState extends State<NotificationPage> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
-                // Title 
-                Text(
-                  'Notification',
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                // === SEARCH FIELD (rounded) ===
+                TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: mycolors.bordersecondary,
+                    ),
+                    filled: true,
+                    fillColor: mycolors.bgPrimary, // white background
+                    hintStyle:
+                        const TextStyle(color: mycolors.textPrimary), // black
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(mysizes.inputfieldRadius),
+                      borderSide: const BorderSide(
+                        color: mycolors.borderprimary,
+                        width: 1.5,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(mysizes.inputfieldRadius),
+                      borderSide: const BorderSide(
+                        color: mycolors.Primary,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  style: const TextStyle(color: mycolors.textPrimary),
                 ),
+
                 const SizedBox(height: 12),
 
-                // SEARCH FIELD bar (rounded)
-              TextField(
-                controller: _searchCtrl,
-                decoration: InputDecoration(
-                  hintText: 'Search',
-                  prefixIcon: const Icon(Icons.search, color: mycolors.bordersecondary),
-                  filled: true,
-                  fillColor: mycolors.bgPrimary, // white background
-                  hintStyle: const TextStyle(color: mycolors.textPrimary), // black text
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(mysizes.inputfieldRadius),
-                    borderSide: const BorderSide(color: mycolors.borderprimary, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(mysizes.inputfieldRadius),
-                    borderSide: const BorderSide(color: mycolors.Primary, width: 2),
-                  ),
-                ),
-                style: const TextStyle(color: mycolors.textPrimary),
-              ),
-
-                const SizedBox(height: 12),
-
-                /* 
-                  These are your All / Unread toggle chips.
-                  They let the user switch views between all notifications or only unread ones 
-                */
+                // All / Unread toggle chips
                 Row(
                   children: [
                     ChoiceChip(
                       label: const Text('All'),
                       selected: !_showUnreadOnly,
                       onSelected: (v) => setState(() => _showUnreadOnly = !v),
-                      // Give "All" a filled look when selected
                       selectedColor: mycolors.Primary,
                       labelStyle: TextStyle(
-                        color: !_showUnreadOnly ? theme.colorScheme.onPrimary : null,
+                        color: !_showUnreadOnly
+                            ? theme.colorScheme.onPrimary
+                            : null,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -177,7 +179,9 @@ class _NotificationPageState extends State<NotificationPage> {
                       onSelected: (v) => setState(() => _showUnreadOnly = v),
                       selectedColor: mycolors.Primary,
                       labelStyle: TextStyle(
-                        color: _showUnreadOnly ? mycolors.textinbox : mycolors.textPrimary,
+                        color: _showUnreadOnly
+                            ? mycolors.textinbox
+                            : mycolors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -185,29 +189,38 @@ class _NotificationPageState extends State<NotificationPage> {
                 ),
                 const SizedBox(height: 12),
 
-              // This block shows a friendly message and icon when there are no results (after search/filter)
+                // Empty state
                 if (items.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.notifications_off_outlined, size: 64, color: theme.hintColor),
+                        Icon(
+                          Icons.notifications_off_outlined,
+                          size: 64,
+                          color: theme.hintColor,
+                        ),
                         const SizedBox(height: 12),
-                        Text('No notifications found', style: theme.textTheme.titleMedium),
+                        Text(
+                          'No notifications found',
+                          style: theme.textTheme.titleMedium,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           _query.isEmpty
                               ? 'You’re all caught up. Pull to refresh.'
                               : 'Try clearing the search or filters.',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.hintColor,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   )
                 else
-                  // Results - Displays the list of notifications 
+                  // Results list
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -217,7 +230,6 @@ class _NotificationPageState extends State<NotificationPage> {
                       final n = items[index];
                       return NotificationItem(
                         data: n,
-                        // darker for unread, lighter for read — handled in the item widget
                         onToggleRead: () async {
                           await _controller.toggle(n.id);
                           if (mounted) _refresh();
@@ -234,31 +246,37 @@ class _NotificationPageState extends State<NotificationPage> {
           },
         ),
       ),
+
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 3, // <-- change this per page
         onTap: (index) {
           if (index == 3) return; // already on this page
-          
+
           switch (index) {
             case 0: // HOME
-              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false);
               break;
 
             case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
 
             case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
 
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
 
             case 4: // PROFILE / SETTINGS
-              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/settings', (_) => false);
               break;
           }
         },
