@@ -39,6 +39,7 @@ class kitaid extends StatelessWidget {
         '/delete-account': (_) => const DeleteAccountPage(),
          '/privacy': (_) => const PrivacyPolicyPage(),
           '/login': (_) => const LoginScreen(),
+        '/profile': (_) => const ProfilePage(), 
         
       },
     );

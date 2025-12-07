@@ -177,16 +177,25 @@ class _HomePageState extends State<HomePage> {
                       // -----------------------
                       Row(
                         children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundColor: scheme.secondaryContainer,
-                            backgroundImage: (profile?.photoUrl?.isNotEmpty ?? false)
-                                ? NetworkImage(profile!.photoUrl!)
-                                : null,
-                            child: (profile?.photoUrl?.isNotEmpty ?? false)
-                                ? null
-                                : Icon(Icons.person, color: scheme.onSecondaryContainer, size: 28),
-                          ),
+                          // Make avatar a button → navigates to Profile page
+GestureDetector(
+  onTap: () {
+    // If your route is named '/profile', keep this.
+    // If you’re still using '/settings' as the profile page, change to '/settings'.
+    Navigator.pushNamed(context, '/profile');
+  },
+  child: CircleAvatar(
+    radius: 28,
+    backgroundColor: scheme.secondaryContainer,
+    backgroundImage: (profile?.photoUrl?.isNotEmpty ?? false)
+        ? NetworkImage(profile!.photoUrl!)
+        : null,
+    child: (profile?.photoUrl?.isNotEmpty ?? false)
+        ? null
+        : Icon(Icons.person, color: scheme.onSecondaryContainer, size: 28),
+  ),
+),
+
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
