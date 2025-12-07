@@ -212,37 +212,6 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
-
-      // NAVBAR
-      bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4,
-        onTap: (index) {
-          if (index == 4) return;
-
-          switch (index) {
-            case 0:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/home', (_) => false);
-              break;
-            case 1:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/chatbot', (_) => false);
-              break;
-            case 2:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/services', (_) => false);
-              break;
-            case 3:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/notifications', (_) => false);
-              break;
-            case 4:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/settings', (_) => false);
-              break;
-          }
-        },
-      ),
     );
   }
 }
