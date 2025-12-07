@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
+import 'package:kitaid1/features/settings/contact_page.dart';
+import 'package:kitaid1/features/settings/privacy_policy_page.dart';
+import 'package:kitaid1/features/support/faq_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
-
 
 enum AppLanguage { bm, en }
 
@@ -19,19 +21,32 @@ class _SettingsPageState extends State<SettingsPage> {
   String t(String key) {
     final bm = _lang == AppLanguage.bm;
     switch (key) {
-      case 'title': return bm ? 'Tetapan' : 'Settings';
-      case 'language': return bm ? 'Bahasa' : 'Language';
-      case 'bm': return 'BM';
-      case 'en': return 'EN';
-      case 'account': return bm ? 'Akaun' : 'Account';
-      case 'about': return bm ? 'Mengenai' : 'About';
-      case 'change_password': return bm ? 'Tukar Kata Laluan' : 'Change Password';
-      case 'delete_account': return bm ? 'Padam Akaun' : 'Delete Account';
-      // case 'faq': return bm ? 'Soalan Lazim' : 'FAQ';
-      case 'privacy': return bm ? 'Dasar Privasi' : 'Privacy Policy';
-      case 'contact': return bm ? 'Kenalan' : 'Contact';
-      case 'sign_out': return bm ? 'Log keluar' : 'Sign Out';
-      default: return key;
+      case 'title':
+        return bm ? 'Tetapan' : 'Settings';
+      case 'language':
+        return bm ? 'Bahasa' : 'Language';
+      case 'bm':
+        return 'BM';
+      case 'en':
+        return 'EN';
+      case 'account':
+        return bm ? 'Akaun' : 'Account';
+      case 'about':
+        return bm ? 'Mengenai' : 'About';
+      case 'change_password':
+        return bm ? 'Tukar Kata Laluan' : 'Change Password';
+      case 'delete_account':
+        return bm ? 'Padam Akaun' : 'Delete Account';
+      case 'faq':
+        return bm ? 'Soalan Lazim' : 'FAQ';
+      case 'privacy':
+        return bm ? 'Dasar Privasi' : 'Privacy Policy';
+      case 'contact':
+        return bm ? 'Kenalan' : 'Contact';
+      case 'sign_out':
+        return bm ? 'Log keluar' : 'Sign Out';
+      default:
+        return key;
     }
   }
 
@@ -39,57 +54,43 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _lang = lang);
   }
 
-void _showSignOutDialog() {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text("Are you sure?"),
-        content: const Text("Do you really want to sign out?"),
-        actions: [
-          // NO BUTTON (Green)
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop(); // close popup
-            },
-            child: const Text(
-              "No",
-              style: TextStyle(
-                color: Colors.green,
-                fontWeight: FontWeight.bold,
+  void _showSignOutDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text("Are you sure?"),
+          content: const Text("Do you really want to sign out?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text(
+                "No",
+                style: TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold),
               ),
             ),
-          ),
-
-          // YES BUTTON (Red)
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop(); 
-
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                '/login',   // <-- make sure this exists
-                (route) => false,
-              );
-            },
-            child: const Text(
-              "Yes",
-              style: TextStyle(
-                color: Colors.red,
-                fontWeight: FontWeight.bold,
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/login', (route) => false);
+              },
+              child: const Text(
+                "Yes",
+                style:
+                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
             ),
-          ),
-        ],
-      );
-    },
-  );
-}
-
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,16 +99,18 @@ void _showSignOutDialog() {
       appBar: AppBar(
         title: Text(
           t('title'),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w600),
         ),
         backgroundColor: mycolors.Primary,
         elevation: 0,
         centerTitle: true,
       ),
+
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: [
-          // ===== LANGUAGE OPTION (inside container) =====
+          // LANGUAGE OPTION
           _SettingsTileContainer(
             child: _LanguageRow(
               icon: Icons.language,
@@ -121,50 +124,82 @@ void _showSignOutDialog() {
 
           const SizedBox(height: 28),
 
-          // ===== ACCOUNT =====
+          // ACCOUNT
           Text(
             t('account'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: mycolors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: mycolors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
 
           _SettingsTile(
             icon: Icons.lock_outline,
             label: t('change_password'),
-            onTap: () {
-              Navigator.pushNamed(context, '/change-password');
-            },
+            onTap: () => Navigator.pushNamed(context, '/change-password'),
           ),
           _SettingsTile(
             icon: Icons.delete_forever_outlined,
             label: t('delete_account'),
             iconColor: mycolors.warningprinmary,
             labelStyle: TextStyle(color: mycolors.warningprinmary),
-            onTap: () {
-              Navigator.pushNamed(context, '/delete-account');
-            },
+            onTap: () => Navigator.pushNamed(context, '/delete-account'),
           ),
 
           const SizedBox(height: 28),
 
-          // ===== ABOUT =====
+          // ABOUT
           Text(
             t('about'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: mycolors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: mycolors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
 
-          //_SettingsTile(icon: Icons.help_outline, label: t('faq'), onTap: () {}),
-          _SettingsTile(icon: Icons.privacy_tip_outlined, label: t('privacy'), onTap: () {
-            Navigator.pushNamed(context, '/privacy');
-          }),
-          _SettingsTile(icon: Icons.support_agent_outlined, label: t('contact'), onTap: () {}),
+          // ✅ FAQ → FaqPage
+          _SettingsTile(
+            icon: Icons.help_outline,
+            label: t('faq'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FaqPage(),
+                ),
+              );
+            },
+          ),
+
+          // ✅ Privacy Policy → PrivacyPolicyPage
+          _SettingsTile(
+            icon: Icons.privacy_tip_outlined,
+            label: t('privacy'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PrivacyPolicyPage(),
+                ),
+              );
+            },
+          ),
+
+          // CONTACT → BOTTOM SHEET
+          _SettingsTile(
+            icon: Icons.support_agent_outlined,
+            label: t('contact'),
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const ContactPage(),
+              );
+            },
+          ),
 
           const SizedBox(height: 28),
 
@@ -177,31 +212,33 @@ void _showSignOutDialog() {
           ),
         ],
       ),
-      // ===== OFFICIAL KITAID NAVBAR =====
+
+      // NAVBAR
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4, // <-- change this per page
+        currentIndex: 4,
         onTap: (index) {
-          if (index == 4) return; // already on this page
-          
+          if (index == 4) return;
+
           switch (index) {
-            case 0: // HOME
-              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+            case 0:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false);
               break;
-
-            case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+            case 1:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
-
-            case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+            case 2:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
-
-            case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+            case 3:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
-
-            case 4: // PROFILE / SETTINGS
-              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+            case 4:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/settings', (_) => false);
               break;
           }
         },
@@ -261,7 +298,7 @@ class _LanguageRow extends StatelessWidget {
 }
 
 //
-// ─── LANGUAGE PILL STYLE BUTTONS ────────────────────────────────────────────────
+// ─── LANGUAGE PILL ───────────────────────────────────────────────────────────────
 //
 class _LangPill extends StatelessWidget {
   const _LangPill({
@@ -302,7 +339,7 @@ class _LangPill extends StatelessWidget {
 }
 
 //
-// ─── SETTINGS TILE WRAPPER FOR LANGUAGE ROW ─────────────────────────────────────
+// ─── TILE CONTAINER ─────────────────────────────────────────────────────────────
 //
 class _SettingsTileContainer extends StatelessWidget {
   const _SettingsTileContainer({required this.child});
@@ -331,7 +368,7 @@ class _SettingsTileContainer extends StatelessWidget {
 }
 
 //
-// ─── SETTINGS TILE (OTHER OPTIONS) ──────────────────────────────────────────────
+// ─── SETTINGS TILE ─────────────────────────────────────────────────────────────
 //
 class _SettingsTile extends StatelessWidget {
   const _SettingsTile({
@@ -365,12 +402,15 @@ class _SettingsTile extends StatelessWidget {
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         leading: Icon(icon, color: iconColor ?? mycolors.iconColor),
         title: Text(
           label,
           style: labelStyle ??
-              Theme.of(context).textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary),
+              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: mycolors.textPrimary,
+                  ),
         ),
         trailing: Icon(Icons.chevron_right, color: mycolors.iconColor),
         onTap: onTap,
