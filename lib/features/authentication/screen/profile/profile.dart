@@ -274,32 +274,31 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
 
-      // ---------- OFFICIAL KITAID NAVBAR ----------
+      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4, // PROFILE / SETTINGS tab
+        currentIndex: 4, // <-- change this per page
         onTap: (index) {
           if (index == 4) return; // already on this page
 
           switch (index) {
             case 0: // HOME
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/home', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
+
             case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
+
             case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
+
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
+
             case 4: // PROFILE
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
         },
