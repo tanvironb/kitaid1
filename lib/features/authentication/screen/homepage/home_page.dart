@@ -351,8 +351,8 @@ class _HomePageState extends State<HomePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
 
-            case 4: // PROFILE / SETTINGS
-              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+            case 4: // PROFILE
+              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
         },
