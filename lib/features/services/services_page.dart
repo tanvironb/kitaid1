@@ -3,7 +3,6 @@ import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
-
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
 
@@ -53,12 +52,19 @@ class _ServicesPageState extends State<ServicesPage> {
 
     return Scaffold(
       backgroundColor: mycolors.bgPrimary,
+
+      // ===== APP BAR (same style as Settings header) =====
       appBar: AppBar(
-        title: const Text('Services'),
-        backgroundColor: mycolors.bgPrimary,
-        foregroundColor: mycolors.textPrimary,
+        backgroundColor: mycolors.Primary,
+        foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          'Services',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
+
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -68,18 +74,22 @@ class _ServicesPageState extends State<ServicesPage> {
             style: const TextStyle(color: mycolors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Search',
-              prefixIcon: const Icon(Icons.search, color: mycolors.textPrimary),
+              prefixIcon:
+                  const Icon(Icons.search, color: mycolors.textPrimary),
               filled: true,
               fillColor: Colors.white, // 👈 white search bar background
               hintStyle: const TextStyle(color: mycolors.textPrimary),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: mycolors.borderprimary, width: 1.5),
+                borderSide: const BorderSide(
+                    color: mycolors.borderprimary, width: 1.5),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: mycolors.Primary, width: 2),
+                borderSide: const BorderSide(
+                    color: mycolors.Primary, width: 2),
               ),
             ),
           ),
@@ -92,13 +102,14 @@ class _ServicesPageState extends State<ServicesPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
+              border: Border.all(
+                  color: mycolors.borderprimary.withOpacity(0.3)),
             ),
             child: Center(
               child: Text(
                 'Slideshow / Promo Area\n(You can add images later)',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: mycolors.textPrimary),
+                style: const TextStyle(color: mycolors.textPrimary),
               ),
             ),
           ),
@@ -158,7 +169,8 @@ class _ServicesPageState extends State<ServicesPage> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: others.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
@@ -176,31 +188,37 @@ class _ServicesPageState extends State<ServicesPage> {
             ),
         ],
       ),
+
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 2, // <-- change this per page
         onTap: (index) {
           if (index == 2) return; // already on this page
-          
+
           switch (index) {
             case 0: // HOME
-              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false);
               break;
 
             case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
 
             case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
 
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
 
             case 4: // PROFILE / SETTINGS
-              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/settings', (_) => false);
               break;
           }
         },
@@ -237,7 +255,7 @@ class _ServiceChip extends StatelessWidget {
         width: 140,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: mycolors.btnSecondary, // 👈 matches your accent button color
+          color: mycolors.btnSecondary, // accent button color
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -283,7 +301,8 @@ class _ServiceCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
+          border: Border.all(
+              color: mycolors.borderprimary.withOpacity(0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -323,16 +342,18 @@ class _EmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
+        border: Border.all(
+            color: mycolors.borderprimary.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.search_off, color: mycolors.textPrimary),
+          const Icon(Icons.search_off, color: mycolors.textPrimary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: mycolors.textPrimary),
+              style:
+                  const TextStyle(color: mycolors.textPrimary),
             ),
           ),
         ],
