@@ -88,13 +88,7 @@ class EmergencyLink {
   final String url;       // external official site
   final String? asset;    // your logo asset later
   final IconData? icon;   // default icon for now
-  const EmergencyLink({
-    required this.id,
-    required this.name,
-    required this.url,
-    this.asset,
-    this.icon,
-  });
+  const EmergencyLink({required this.id, required this.name, required this.url, this.asset, this.icon});
 }
 
 /// --------------------------
@@ -150,18 +144,14 @@ class _HomePageState extends State<HomePage> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      // ===== APP BAR (same style as Settings / Notifications / Services / Profile) =====
-      appBar: AppBar(
-        backgroundColor: mycolors.Primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Home',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
-
+      // ⚠️ No AppBar (as requested)
+      // bottomNavigationBar: KitaBottomNav(
+      //   currentIndex: _currentIndex,
+      //   onTabSelected: (i) {
+      //     setState(() => _currentIndex = i);
+      //     // TODO: handle tab routing
+      //   },
+      // ),
       body: SafeArea(
         child: AnimatedBuilder(
           // Rebuild when profile or recents change.
@@ -190,17 +180,12 @@ class _HomePageState extends State<HomePage> {
                           CircleAvatar(
                             radius: 28,
                             backgroundColor: scheme.secondaryContainer,
-                            backgroundImage:
-                                (profile?.photoUrl?.isNotEmpty ?? false)
-                                    ? NetworkImage(profile!.photoUrl!)
-                                    : null,
+                            backgroundImage: (profile?.photoUrl?.isNotEmpty ?? false)
+                                ? NetworkImage(profile!.photoUrl!)
+                                : null,
                             child: (profile?.photoUrl?.isNotEmpty ?? false)
                                 ? null
-                                : Icon(
-                                    Icons.person,
-                                    color: scheme.onSecondaryContainer,
-                                    size: 28,
-                                  ),
+                                : Icon(Icons.person, color: scheme.onSecondaryContainer, size: 28),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -209,15 +194,15 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Text(
                                   'Hi ${profile?.displayName?.trim().isNotEmpty == true ? profile!.displayName!.trim() : "there"}',
-                                  style: text.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: mycolors.Primary,
-                                  ),
+                                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, color:  mycolors.Primary, ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                
                               ],
                             ),
                           ),
+                          // Big QR shortcut (tap area)
+                          
                         ],
                       ),
 
@@ -225,14 +210,9 @@ class _HomePageState extends State<HomePage> {
 
                       // -----------------------
                       // MY CARDS (from Profile)
+                      // Only show when user is logged in AND cards are available
                       // -----------------------
-                      Text(
-                        'My Cards',
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: mycolors.textHeading,
-                        ),
-                      ),
+                      Text('My Cards', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: mycolors.textHeading,)),
                       const SizedBox(height: 10),
 
                       if (profile == null || cards.isEmpty) ...[
@@ -246,8 +226,7 @@ class _HomePageState extends State<HomePage> {
                         GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
@@ -272,17 +251,12 @@ class _HomePageState extends State<HomePage> {
 
                       // -----------------------
                       // RECENT SERVICES
+                      // driven by RecentServicesStore
                       // -----------------------
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Recent Services',
-                            style: text.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: mycolors.textHeading,
-                            ),
-                          ),
+                          Text('Recent Services', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: mycolors.textHeading,)),
                           TextButton(
                             onPressed: () {
                               // TODO: navigate to Services main page
@@ -296,8 +270,7 @@ class _HomePageState extends State<HomePage> {
                       if (recents.isEmpty)
                         _EmptyStrip(
                           icon: Icons.history_rounded,
-                          message:
-                              'Browse a service and it’ll appear here.',
+                          message: 'Browse a service and it’ll appear here.',
                         )
                       else
                         SizedBox(
@@ -305,8 +278,7 @@ class _HomePageState extends State<HomePage> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: recents.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, i) {
                               final s = recents[i];
                               return _ChipButton(
@@ -324,20 +296,13 @@ class _HomePageState extends State<HomePage> {
                       // -----------------------
                       // EMERGENCY (logos linking out)
                       // -----------------------
-                      Text(
-                        'Emergency',
-                        style: text.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: mycolors.textHeading,
-                        ),
-                      ),
+                      Text('Emergency', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700,color: mycolors.textHeading,)),
                       const SizedBox(height: 10),
 
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
@@ -364,37 +329,30 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-
-      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 0, // <-- Home tab
+        currentIndex: 0, // <-- change this per page
         onTap: (index) {
           if (index == 0) return; // already on this page
-
+          
           switch (index) {
             case 0: // HOME
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/home', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
 
             case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
 
             case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
 
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
 
             case 4: // PROFILE / SETTINGS
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/settings', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
               break;
           }
         },
@@ -410,11 +368,7 @@ class _RoundedSquareButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _RoundedSquareButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
+  const _RoundedSquareButton({required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -424,8 +378,7 @@ class _RoundedSquareButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: scheme.primaryContainer,
           borderRadius: BorderRadius.circular(16),
@@ -434,11 +387,7 @@ class _RoundedSquareButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 24, color: scheme.onPrimaryContainer),
-            Text(
-              label,
-              style: text.labelSmall
-                  ?.copyWith(color: scheme.onPrimaryContainer),
-            ),
+            Text(label, style: text.labelSmall?.copyWith(color: scheme.onPrimaryContainer)),
           ],
         ),
       ),
@@ -451,12 +400,7 @@ class _CardPill extends StatelessWidget {
   final String? assetLogo;
   final IconData icon;
   final VoidCallback onTap;
-  const _CardPill({
-    required this.title,
-    required this.onTap,
-    this.assetLogo,
-    required this.icon,
-  });
+  const _CardPill({required this.title, required this.onTap, this.assetLogo, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -464,15 +408,12 @@ class _CardPill extends StatelessWidget {
     final text = Theme.of(context).textTheme;
     return Material(
       color: scheme.primaryContainer,
-      borderRadius:
-          BorderRadius.circular(mysizes.cardRadiusLg),
+      borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
       child: InkWell(
-        borderRadius:
-            BorderRadius.circular(mysizes.cardRadiusLg),
+        borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
               if (assetLogo != null)
@@ -481,12 +422,8 @@ class _CardPill extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: scheme.onPrimaryContainer
-                        .withOpacity(0.08),
-                    image: DecorationImage(
-                      image: AssetImage(assetLogo!),
-                      fit: BoxFit.contain,
-                    ),
+                    color: scheme.onPrimaryContainer.withOpacity(0.08),
+                    image: DecorationImage(image: AssetImage(assetLogo!), fit: BoxFit.contain),
                   ),
                 )
               else
@@ -495,14 +432,9 @@ class _CardPill extends StatelessWidget {
                   height: 32,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
-                    color: scheme.onPrimaryContainer
-                        .withOpacity(0.08),
+                    color: scheme.onPrimaryContainer.withOpacity(0.08),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 20,
-                    color: scheme.onPrimaryContainer,
-                  ),
+                  child: Icon(icon, size: 20, color: scheme.onPrimaryContainer),
                 ),
               const SizedBox(width: 12),
               Expanded(
@@ -540,12 +472,8 @@ class _ChipButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 14, vertical: 10),
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(label, style: Theme.of(context).textTheme.labelLarge),
         ),
       ),
     );
@@ -557,20 +485,14 @@ class _EmergencyTile extends StatelessWidget {
   final String url;
   final String? asset;
   final IconData icon;
-  const _EmergencyTile({
-    required this.name,
-    required this.url,
-    this.asset,
-    required this.icon,
-  });
+  const _EmergencyTile({required this.name, required this.url, this.asset, required this.icon});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     return InkWell(
-      borderRadius:
-          BorderRadius.circular(mysizes.cardRadiusMd),
+      borderRadius: BorderRadius.circular(mysizes.cardRadiusMd),
       onTap: () async {
         final uri = Uri.parse(url);
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -579,34 +501,17 @@ class _EmergencyTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: scheme.surfaceVariant,
-          borderRadius:
-              BorderRadius.circular(mysizes.cardRadiusMd),
+          borderRadius: BorderRadius.circular(mysizes.cardRadiusMd),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (asset != null)
-              Expanded(
-                child: Image.asset(
-                  asset!,
-                  fit: BoxFit.contain,
-                ),
-              )
+              Expanded(child: Image.asset(asset!, fit: BoxFit.contain))
             else
-              Expanded(
-                child: Icon(
-                  icon,
-                  size: 36,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
+              Expanded(child: Icon(icon, size: 36, color: scheme.onSurfaceVariant)),
             const SizedBox(height: 6),
-            Text(
-              name,
-              style: text.labelMedium,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-            ),
+            Text(name, style: text.labelMedium, textAlign: TextAlign.center, maxLines: 2),
           ],
         ),
       ),
@@ -617,10 +522,7 @@ class _EmergencyTile extends StatelessWidget {
 class _EmptyStrip extends StatelessWidget {
   final IconData icon;
   final String message;
-  const _EmptyStrip({
-    required this.icon,
-    required this.message,
-  });
+  const _EmptyStrip({required this.icon, required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -631,19 +533,13 @@ class _EmptyStrip extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.surfaceVariant,
-        borderRadius:
-            BorderRadius.circular(mysizes.cardRadiusMd),
+        borderRadius: BorderRadius.circular(mysizes.cardRadiusMd),
       ),
       child: Row(
         children: [
           Icon(icon, color: scheme.onSurfaceVariant),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: text.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(message, style: text.bodyMedium)),
         ],
       ),
     );
