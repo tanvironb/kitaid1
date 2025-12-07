@@ -1,11 +1,10 @@
-// lib/pages/privacy_policy_page.dart
+// lib/features/settings/faq_page.dart
 import 'package:flutter/material.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
-
-class PrivacyPolicyPage extends StatelessWidget {
-  const PrivacyPolicyPage({super.key});
+class FaqPage extends StatelessWidget {
+  const FaqPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +16,7 @@ class PrivacyPolicyPage extends StatelessWidget {
         foregroundColor: Colors.white, // white text & icons
         elevation: 0,
         title: const Text(
-          'Privacy Policy',
+          'FAQ',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
@@ -31,7 +30,7 @@ class PrivacyPolicyPage extends StatelessWidget {
               children: [
                 // Header
                 Text(
-                  'Privacy Policy for KitaID',
+                  'Frequently Asked Questions (FAQ)',
                   style: textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: mycolors.textPrimary,
@@ -53,112 +52,220 @@ class PrivacyPolicyPage extends StatelessWidget {
                     children: [
                       _P(
                         textTheme,
-                        'This Privacy Policy describes our policies and procedures on the collection, use and disclosure of your information when you use the Service and tells you about your privacy rights and how the law protects you.',
-                      ),
-                      _P(
-                        textTheme,
-                        'We use your personal data to provide and improve the Service. By using the Service, you agree to the collection and use of information in accordance with this Privacy Policy.',
+                        'This page answers some common questions about using KitaID. '
+                        'If you can’t find what you’re looking for, please reach out to us using the contact details at the bottom of this page.',
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 20),
-                _H2(textTheme, 'Interpretation and Definitions'),
-                _H3(textTheme, 'Interpretation'),
-                _P(
-                  textTheme,
-                  'Words with the initial letter capitalized have meanings defined under the following conditions. The following definitions shall have the same meaning whether they appear in singular or plural.',
+                const SizedBox(height: 24),
+
+                // ─── GETTING STARTED ────────────────────────────────────────────
+                _H2(textTheme, 'Getting Started'),
+                const SizedBox(height: 8),
+                _CardBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _H3(textTheme, 'What is KitaID?'),
+                      _P(
+                        textTheme,
+                        'KitaID is a digital identity wallet designed for users in Malaysia. '
+                        'It helps you securely store and access your important identity documents '
+                        '(such as MyKad, passport, and driver’s license) in one place, with biometric login '
+                        'and QR-based verification.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'How do I create an account?'),
+                      _P(
+                        textTheme,
+                        'You can create an account directly in the app by registering with your phone number '
+                        'and basic details. After signing up, you’ll verify your account using a one-time '
+                        'password (OTP) sent to your phone.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'Which documents can I add to KitaID?'),
+                      _P(
+                        textTheme,
+                        'In our current version, KitaID focuses on the following document types:',
+                      ),
+                      _BulletList(textTheme, const [
+                        'MyKad / I-Kad information',
+                        'Passport information',
+                        'Driver’s license information',
+                        'Other supporting identity-related documents (where supported)',
+                      ]),
+                    ],
+                  ),
                 ),
 
-                _H3(textTheme, 'Definitions'),
-                _BulletList(textTheme, const [
-                  'Account: A unique account created for you to access our Service or parts of our Service.',
-                  'Affiliate: An entity that controls, is controlled by, or is under common control with a party.',
-                  'Application: KitaID, the software program provided by the Company.',
-                  'Company: Referred to as "the Company", "We", "Us" or "Our" — KitaID.',
-                  'Country: Malaysia.',
-                  'Device: Any device that can access the Service such as a computer, cellphone or digital tablet.',
-                  'Personal Data: Any information that relates to an identified or identifiable individual.',
-                  'Service: The Application.',
-                  'Service Provider: Any natural or legal person who processes data on behalf of the Company.',
-                  'Usage Data: Data collected automatically (e.g., IP address, browser type, pages visited, timestamps).',
-                  'You: The individual using the Service, or the company/other legal entity on whose behalf the Service is used.',
-                ]),
+                const SizedBox(height: 24),
 
-                const SizedBox(height: 20),
-                _H2(textTheme, 'Collecting and Using Your Personal Data'),
-                _H3(textTheme, 'Types of Data Collected'),
-                _H4(textTheme, 'Personal Data'),
-                _P(
-                  textTheme,
-                  'While using our Service, we may ask you to provide certain personally identifiable information that can be used to contact or identify you, including:',
-                ),
-                _BulletList(textTheme, const [
-                  'Email address',
-                  'First name and last name',
-                  'Phone number',
-                  'Usage Data',
-                ]),
+                // ─── ACCOUNTS & LOGIN ─────────────────────────────────────────
+                _H2(textTheme, 'Accounts & Login'),
+                const SizedBox(height: 8),
+                _CardBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _H3(textTheme, 'What login methods are supported?'),
+                      _P(
+                        textTheme,
+                        'KitaID supports secure login using your registered phone number and password. '
+                        'If your device supports it, you can also enable biometric login (fingerprint or '
+                        'face ID) from the Settings page for faster access.',
+                      ),
+                      const _FaqDivider(),
 
-                _H4(textTheme, 'Usage Data'),
-                _P(
-                  textTheme,
-                  'Usage Data is collected automatically and may include your device’s IP address, browser type/version, pages visited, time/date of visit, time spent on pages, unique device identifiers, and other diagnostic data.',
-                ),
-                _P(
-                  textTheme,
-                  'When accessing via a mobile device, we may collect device type, unique ID, IP address, operating system, mobile browser type, unique identifiers, and diagnostic data.',
+                      _H3(textTheme, 'I forgot my password. What should I do?'),
+                      _P(
+                        textTheme,
+                        'On the login screen, tap “Forgot Password”. Follow the instructions to verify '
+                        'your phone number and set a new password.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(
+                          textTheme, 'Can I use my account on multiple devices?'),
+                      _P(
+                        textTheme,
+                        'You can log in to KitaID on another device using your registered account. '
+                        'For security reasons, you may be asked to re-verify your identity '
+                        '(for example, via OTP or security checks) when using a new device.',
+                      ),
+                    ],
+                  ),
                 ),
 
-                _H4(textTheme, 'Information Collected while Using the Application'),
-                _P(textTheme, 'With your prior permission, the Application may collect:'),
-                _BulletList(textTheme, const [
-                  'Information regarding your location',
-                  "Pictures and other information from your device's camera and photo library",
-                ]),
-                _P(
-                  textTheme,
-                  'We use this information to provide features of our Service and to improve/customize it. Information may be uploaded to Company or Service Provider servers, or stored locally on your device. You can enable or disable access at any time via your device settings.',
+                const SizedBox(height: 24),
+
+                // ─── SECURITY & PRIVACY ───────────────────────────────────────
+                _H2(textTheme, 'Security & Privacy'),
+                const SizedBox(height: 8),
+                _CardBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _H3(textTheme, 'Is my data safe in KitaID?'),
+                      _P(
+                        textTheme,
+                        'We take security seriously. KitaID uses secure communication and storage practices '
+                        'to help protect your data. Biometric login, encrypted storage, and secure sessions '
+                        'are used to reduce the risk of unauthorized access.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'Can anyone else see my documents?'),
+                      _P(
+                        textTheme,
+                        'Your documents are only visible when you unlock the app using your password or '
+                        'biometrics. When you choose to share or display a QR code for verification, only '
+                        'the necessary information is shown to the verifier.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(
+                        textTheme,
+                        'Does KitaID share my data with third parties?',
+                      ),
+                      _P(
+                        textTheme,
+                        'We do not sell your personal data. Any data sharing (for example, with service '
+                        'providers or verification partners) is done only to provide core features of KitaID '
+                        'and according to our privacy practices.',
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 20),
-                _H2(textTheme, 'Use of Your Personal Data'),
-                _P(
-                  textTheme,
-                  'The Company may use Personal Data for the following purposes:',
-                ),
-                _BulletList(textTheme, const [
-                  'To provide and maintain our Service, including monitoring usage.',
-                  'To manage your Account and provide registered-user functionalities.',
-                  'For the performance of a contract, including purchases or other agreements made through the Service.',
-                  'To contact you via email, calls, SMS, or push notifications about updates and security notices.',
-                  'To provide you with news, special offers, and general information about similar goods/services unless you opt out.',
-                  'To manage your requests to us.',
-                  'For business transfers (e.g., merger, sale, financing) where user data may be part of transferred assets.',
-                  'For other purposes such as data analysis, usage trends, campaign effectiveness, and overall service improvement.',
-                ]),
-                _P(textTheme, 'We may share your personal information in the following situations:'),
-                _BulletList(textTheme, const [
-                  'With Service Providers to monitor/analyze usage or to contact you.',
-                  'For business transfers in connection with mergers or acquisitions.',
-                  'With Affiliates that will be required to honor this Privacy Policy.',
-                  'With business partners to offer certain products, services, or promotions.',
-                  'With other users when you share information in public areas of the Service.',
-                  'With your consent for any other purpose.',
-                ]),
+                const SizedBox(height: 24),
 
-                const SizedBox(height: 20),
-                _H2(textTheme, 'Retention of Your Personal Data'),
-                _P(
-                  textTheme,
-                  'We retain Personal Data only as long as necessary for the purposes set out in this Policy and to comply with legal obligations, resolve disputes, and enforce agreements. Usage Data is generally retained for a shorter period unless needed to strengthen security, improve functionality, or where longer retention is legally required.',
+                // ─── USING YOUR DIGITAL IDS ───────────────────────────────────
+                _H2(textTheme, 'Using Your Digital IDs'),
+                const SizedBox(height: 8),
+                _CardBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _H3(textTheme, 'How does QR verification work?'),
+                      _P(
+                        textTheme,
+                        'Certain services can scan your KitaID QR code to quickly confirm your identity '
+                        'details. The QR contains a secure reference to your data, and only authorized '
+                        'verifiers can read the necessary information.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'Can I use KitaID offline?'),
+                      _P(
+                        textTheme,
+                        'Some features, such as viewing previously stored documents, may work offline. '
+                        'However, actions that require real-time verification or syncing (like updating data, '
+                        'OTP, or online checks) will need an internet connection.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(
+                          textTheme, 'Is KitaID an official government app?'),
+                      _P(
+                        textTheme,
+                        'KitaID is a student project / prototype application designed to demonstrate a modern '
+                        'digital identity experience. It is not an official replacement for any government-'
+                        'issued ID, and users should always follow official guidelines for legal identification.',
+                      ),
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 20),
-                _H2(textTheme, 'Contact Us'),
-                _P(textTheme,
-                    'If you have any questions about this Privacy Policy, you can contact us by email: monirsa2002@gmail.com'),
+                const SizedBox(height: 24),
+
+                // ─── TROUBLESHOOTING & SUPPORT ────────────────────────────────
+                _H2(textTheme, 'Troubleshooting & Support'),
+                const SizedBox(height: 8),
+                _CardBlock(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _H3(textTheme,
+                          'The app is not loading / keeps crashing. What can I do?'),
+                      _P(
+                        textTheme,
+                        'Try the following steps:',
+                      ),
+                      _BulletList(textTheme, const [
+                        'Close and reopen the app.',
+                        'Ensure you have a stable internet connection.',
+                        'Update the app to the latest version (if available).',
+                        'Restart your device and try again.',
+                      ]),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'My information is not updating.'),
+                      _P(
+                        textTheme,
+                        'First, check your internet connection. Then log out and log back in to refresh '
+                        'your session. If the issue continues, contact us with details and screenshots so '
+                        'we can investigate further.',
+                      ),
+                      const _FaqDivider(),
+
+                      _H3(textTheme, 'How can I contact the KitaID team?'),
+                      _P(
+                        textTheme,
+                        'If you have any questions, feedback, or want to report an issue, you can contact '
+                        'us via email:',
+                      ),
+                      _P(
+                        textTheme,
+                        'Email: monirsa2002@gmail.com',
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 8),
               ],
             ),
@@ -182,24 +289,51 @@ class _CardBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
-        border: Border.all(color: mycolors.borderprimary.withValues(alpha: 140)),
+        border: Border.all(
+          color: mycolors.borderprimary.withValues(alpha: 140),
+        ),
       ),
       child: child,
     );
   }
 }
 
-Widget _H2(TextTheme t, String text) =>
-    Padding(padding: const EdgeInsets.only(top: 8, bottom: 8), child: Text(text, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)));
+class _FaqDivider extends StatelessWidget {
+  const _FaqDivider();
 
-Widget _H3(TextTheme t, String text) =>
-    Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(text, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)));
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Divider(
+        height: 1,
+        thickness: 0.7,
+        color: mycolors.borderprimary.withOpacity(0.8),
+      ),
+    );
+  }
+}
 
-Widget _H4(TextTheme t, String text) =>
-    Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(text, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)));
+Widget _H2(TextTheme t, String text) => Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: Text(
+        text,
+        style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
 
-Widget _P(TextTheme t, String text) =>
-    Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: t.bodyMedium));
+Widget _H3(TextTheme t, String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        text,
+        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+
+Widget _P(TextTheme t, String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(text, style: t.bodyMedium, textAlign: TextAlign.left),
+    );
 
 class _BulletList extends StatelessWidget {
   const _BulletList(this.textTheme, this.items);
@@ -209,17 +343,22 @@ class _BulletList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Column(
         children: items
             .map(
               (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('•  '),
-                    Expanded(child: Text(e, style: textTheme.bodyMedium)),
+                    Expanded(
+                      child: Text(
+                        e,
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
                   ],
                 ),
               ),

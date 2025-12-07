@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/features/settings/contact_page.dart';
+import 'package:kitaid1/features/settings/privacy_policy_page.dart';
+import 'package:kitaid1/features/support/faq_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
@@ -19,19 +21,32 @@ class _SettingsPageState extends State<SettingsPage> {
   String t(String key) {
     final bm = _lang == AppLanguage.bm;
     switch (key) {
-      case 'title': return bm ? 'Tetapan' : 'Settings';
-      case 'language': return bm ? 'Bahasa' : 'Language';
-      case 'bm': return 'BM';
-      case 'en': return 'EN';
-      case 'account': return bm ? 'Akaun' : 'Account';
-      case 'about': return bm ? 'Mengenai' : 'About';
-      case 'change_password': return bm ? 'Tukar Kata Laluan' : 'Change Password';
-      case 'delete_account': return bm ? 'Padam Akaun' : 'Delete Account';
-      case 'faq': return bm ? 'Soalan Lazim' : 'FAQ';
-      case 'privacy': return bm ? 'Dasar Privasi' : 'Privacy Policy';
-      case 'contact': return bm ? 'Kenalan' : 'Contact';
-      case 'sign_out': return bm ? 'Log keluar' : 'Sign Out';
-      default: return key;
+      case 'title':
+        return bm ? 'Tetapan' : 'Settings';
+      case 'language':
+        return bm ? 'Bahasa' : 'Language';
+      case 'bm':
+        return 'BM';
+      case 'en':
+        return 'EN';
+      case 'account':
+        return bm ? 'Akaun' : 'Account';
+      case 'about':
+        return bm ? 'Mengenai' : 'About';
+      case 'change_password':
+        return bm ? 'Tukar Kata Laluan' : 'Change Password';
+      case 'delete_account':
+        return bm ? 'Padam Akaun' : 'Delete Account';
+      case 'faq':
+        return bm ? 'Soalan Lazim' : 'FAQ';
+      case 'privacy':
+        return bm ? 'Dasar Privasi' : 'Privacy Policy';
+      case 'contact':
+        return bm ? 'Kenalan' : 'Contact';
+      case 'sign_out':
+        return bm ? 'Log keluar' : 'Sign Out';
+      default:
+        return key;
     }
   }
 
@@ -55,17 +70,20 @@ class _SettingsPageState extends State<SettingsPage> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text(
                 "No",
-                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.green, fontWeight: FontWeight.bold),
               ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
-                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                Navigator.pushNamedAndRemoveUntil(
+                    context, '/login', (route) => false);
               },
               child: const Text(
                 "Yes",
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -81,7 +99,8 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         title: Text(
           t('title'),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w600),
         ),
         backgroundColor: mycolors.Primary,
         elevation: 0,
@@ -109,9 +128,9 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             t('account'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: mycolors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: mycolors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
 
@@ -134,21 +153,38 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             t('about'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: mycolors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: mycolors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
           const SizedBox(height: 8),
 
+          // ✅ FAQ → FaqPage
           _SettingsTile(
             icon: Icons.help_outline,
             label: t('faq'),
-            onTap: () => Navigator.pushNamed(context, '/faq'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const FaqPage(),
+                ),
+              );
+            },
           ),
+
+          // ✅ Privacy Policy → PrivacyPolicyPage
           _SettingsTile(
             icon: Icons.privacy_tip_outlined,
             label: t('privacy'),
-            onTap: () => Navigator.pushNamed(context, '/privacy'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PrivacyPolicyPage(),
+                ),
+              );
+            },
           ),
 
           // CONTACT → BOTTOM SHEET
@@ -185,19 +221,24 @@ class _SettingsPageState extends State<SettingsPage> {
 
           switch (index) {
             case 0:
-              Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/home', (_) => false);
               break;
             case 1:
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
             case 2:
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
             case 3:
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
             case 4:
-              Navigator.pushNamedAndRemoveUntil(context, '/settings', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/settings', (_) => false);
               break;
           }
         },
@@ -235,9 +276,9 @@ class _LanguageRow extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: mycolors.textPrimary,
-            fontWeight: FontWeight.w600,
-          ),
+                color: mycolors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
         ),
         const Spacer(),
         _LangPill(
@@ -361,7 +402,8 @@ class _SettingsTile extends StatelessWidget {
         ],
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         leading: Icon(icon, color: iconColor ?? mycolors.iconColor),
         title: Text(
           label,
