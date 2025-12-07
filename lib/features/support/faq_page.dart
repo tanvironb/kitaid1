@@ -4,8 +4,8 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
 
-class PrivacyPolicyPage extends StatelessWidget {
-  const PrivacyPolicyPage({super.key});
+class PrivacyPolicyPage1 extends StatelessWidget {
+  const PrivacyPolicyPage1({super.key});
 
   @override
   Widget build(BuildContext context) {

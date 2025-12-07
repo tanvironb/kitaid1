@@ -27,7 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'about': return bm ? 'Mengenai' : 'About';
       case 'change_password': return bm ? 'Tukar Kata Laluan' : 'Change Password';
       case 'delete_account': return bm ? 'Padam Akaun' : 'Delete Account';
-      case 'faq': return bm ? 'Soalan Lazim' : 'FAQ';
+      // case 'faq': return bm ? 'Soalan Lazim' : 'FAQ';
       case 'privacy': return bm ? 'Dasar Privasi' : 'Privacy Policy';
       case 'contact': return bm ? 'Kenalan' : 'Contact';
       case 'sign_out': return bm ? 'Log keluar' : 'Sign Out';
@@ -160,7 +160,7 @@ void _showSignOutDialog() {
           ),
           const SizedBox(height: 8),
 
-          _SettingsTile(icon: Icons.help_outline, label: t('faq'), onTap: () {}),
+          //_SettingsTile(icon: Icons.help_outline, label: t('faq'), onTap: () {}),
           _SettingsTile(icon: Icons.privacy_tip_outlined, label: t('privacy'), onTap: () {
             Navigator.pushNamed(context, '/privacy');
           }),
