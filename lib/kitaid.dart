@@ -23,7 +23,7 @@ class kitaid extends StatelessWidget {
     return MaterialApp(
       title: 'KitaID',
       theme: mytheme.LightTheme,
-      home: const SettingsPage(),
+      home: const Splashscreen(),
 
       routes: {
         '/home': (_) => const HomePage(),
