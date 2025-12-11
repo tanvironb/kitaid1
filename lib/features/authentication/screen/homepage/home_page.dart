@@ -85,10 +85,10 @@ class ServiceRef {
 class EmergencyLink {
   final String id;
   final String name;
-  final String url;       // external official site
+  final String phone;       // external calling
   final String? asset;    // your logo asset later
   final IconData? icon;   // default icon for now
-  const EmergencyLink({required this.id, required this.name, required this.url, this.asset, this.icon});
+  const EmergencyLink({required this.id, required this.name, required this.phone, this.asset, this.icon});
 }
 
 /// --------------------------
@@ -109,31 +109,32 @@ class _HomePageState extends State<HomePage> {
     EmergencyLink(
       id: 'jpj',
       name: 'JPJ',
-      url: 'https://www.jpj.gov.my/',
-      icon: Icons.directions_car_filled_outlined,
+      icon: Icons.directions_car_filled_outlined, 
+      phone: '03-8000 8000',
     ),
     EmergencyLink(
       id: 'immigration',
       name: 'Immigration',
-      url: 'https://www.imi.gov.my/',
+      phone: '03-8000 8000',
       //icon: Icons.passport_outlined,
     ),
     EmergencyLink(
       id: 'hkl',
       name: 'HKL',
-      url: 'https://hkl.moh.gov.my/', // Hospital Kuala Lumpur
-      icon: Icons.local_hospital_outlined,
+      icon: Icons.local_hospital_outlined, 
+      phone: '03-2615 5555',
     ),
     EmergencyLink(
       id: 'ambulance',
       name: 'Ambulance',
-      url: 'https://www.malaysia.gov.my/portal/content/30131', // placeholder info page
       icon: Icons.medical_services_outlined,
+      phone: '999',
     ),
     EmergencyLink(
       id: 'police',
       name: 'Police',
       icon: Icons.local_police_outlined,
+      phone: '999',
     ),
   ];
 
@@ -242,14 +243,13 @@ GestureDetector(
                           ),
                           itemCount: cards.length,
                           itemBuilder: (context, i) {
-                            final c = cards[i];
-                            return _CardPill(
-                              title: c.title,
-                              icon: c.icon ?? Icons.badge_outlined,
-                              assetLogo: c.assetLogo,
-                              onTap: () {
-                                // TODO: open the card details
-                              },
+                             final e = _emergency[i];
+                             return _EmergencyTile(
+                               name: e.name,
+                               phone: e.phone,        // ⬅️ pass phone instead of url
+                               icon: e.icon ?? Icons.emergency_share_outlined,
+                               asset: e.asset, 
+                               
                             );
                           },
                         ),
@@ -321,9 +321,9 @@ GestureDetector(
                           final e = _emergency[i];
                           return _EmergencyTile(
                             name: e.name,
-                            url: e.url,
+                            
                             icon: e.icon ?? Icons.emergency_share_outlined,
-                            asset: e.asset,
+                            asset: e.asset, phone: '',
                           );
                         },
                       ),
@@ -490,20 +490,37 @@ class _ChipButton extends StatelessWidget {
 
 class _EmergencyTile extends StatelessWidget {
   final String name;
-  final String url;
+  final String phone;  // ☎️ new field
   final String? asset;
   final IconData icon;
-  const _EmergencyTile({required this.name, required this.url, this.asset, required this.icon});
+
+  const _EmergencyTile({
+    required this.name,
+    required this.phone,
+    this.asset,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+
     return InkWell(
       borderRadius: BorderRadius.circular(mysizes.cardRadiusMd),
       onTap: () async {
-        final uri = Uri.parse(url);
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        final uri = Uri(scheme: 'tel', path: phone); // tel:991, tel:999, etc.
+
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication, // opens phone app
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open dialer')),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -519,7 +536,18 @@ class _EmergencyTile extends StatelessWidget {
             else
               Expanded(child: Icon(icon, size: 36, color: scheme.onSurfaceVariant)),
             const SizedBox(height: 6),
-            Text(name, style: text.labelMedium, textAlign: TextAlign.center, maxLines: 2),
+            Text(
+              name,
+              style: text.labelMedium,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              phone, // show the number under the label (optional)
+              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
