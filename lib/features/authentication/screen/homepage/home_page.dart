@@ -85,11 +85,21 @@ class ServiceRef {
 class EmergencyLink {
   final String id;
   final String name;
-  final String phone;       // external calling
-  final String? asset;    // your logo asset later
-  final IconData? icon;   // default icon for now
-  const EmergencyLink({required this.id, required this.name, required this.phone, this.asset, this.icon});
+  final String phone;      // non-null
+  final String? url;       // optional
+  final String? asset;
+  final IconData? icon;
+
+  const EmergencyLink({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.url,
+    this.asset,
+    this.icon,
+  });
 }
+
 
 /// --------------------------
 /// HOME PAGE
@@ -111,11 +121,13 @@ class _HomePageState extends State<HomePage> {
       name: 'JPJ',
       icon: Icons.directions_car_filled_outlined, 
       phone: '03-8000 8000',
+      url: 'https://www.jpj.gov.my/',
     ),
     EmergencyLink(
       id: 'immigration',
       name: 'Immigration',
       phone: '03-8000 8000',
+      url: 'https://www.imi.gov.my/',
       //icon: Icons.passport_outlined,
     ),
     EmergencyLink(
@@ -123,18 +135,28 @@ class _HomePageState extends State<HomePage> {
       name: 'HKL',
       icon: Icons.local_hospital_outlined, 
       phone: '03-2615 5555',
+      url: 'https://hkl.moh.gov.my/',
     ),
     EmergencyLink(
       id: 'ambulance',
       name: 'Ambulance',
       icon: Icons.medical_services_outlined,
       phone: '999',
+      url: 'https://www.malaysia.gov.my/portal/content/30131',
     ),
     EmergencyLink(
       id: 'police',
       name: 'Police',
       icon: Icons.local_police_outlined,
       phone: '999',
+      url: 'https://www.rmp.gov.my/',
+    ),
+    EmergencyLink(
+      id: 'fire-Service',
+      name: 'Fire-Service',
+      icon: Icons.local_police_outlined,
+      phone: '999',
+      url: 'https://www.bomba.gov.my/',
     ),
   ];
 
@@ -243,15 +265,17 @@ GestureDetector(
                           ),
                           itemCount: cards.length,
                           itemBuilder: (context, i) {
-                             final e = _emergency[i];
-                             return _EmergencyTile(
-                               name: e.name,
-                               phone: e.phone,        // ⬅️ pass phone instead of url
-                               icon: e.icon ?? Icons.emergency_share_outlined,
-                               asset: e.asset, 
-                               
-                            );
-                          },
+  final e = _emergency[i];
+  return _EmergencyTile(
+    name: e.name,
+    phone: e.phone,
+    url: e.url,
+    icon: e.icon ?? Icons.emergency_share_outlined,
+    asset: e.asset,
+  );
+},
+
+
                         ),
                       ],
 
@@ -318,14 +342,16 @@ GestureDetector(
                         ),
                         itemCount: _emergency.length,
                         itemBuilder: (context, i) {
-                          final e = _emergency[i];
-                          return _EmergencyTile(
-                            name: e.name,
-                            
-                            icon: e.icon ?? Icons.emergency_share_outlined,
-                            asset: e.asset, phone: '',
-                          );
-                        },
+  final e = _emergency[i];
+  return _EmergencyTile(
+    name: e.name,
+    phone: e.phone,
+    url: e.url,
+    icon: e.icon ?? Icons.emergency_share_outlined,
+    asset: e.asset,
+  );
+},
+
                       ),
 
                       const SizedBox(height: 12),
@@ -490,15 +516,18 @@ class _ChipButton extends StatelessWidget {
 
 class _EmergencyTile extends StatelessWidget {
   final String name;
-  final String phone;  // ☎️ new field
+  final String phone;
+  final String? url;
   final String? asset;
   final IconData icon;
 
   const _EmergencyTile({
+    super.key,
     required this.name,
     required this.phone,
-    this.asset,
+    this.url,
     required this.icon,
+    this.asset,
   });
 
   @override
@@ -508,19 +537,17 @@ class _EmergencyTile extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(mysizes.cardRadiusMd),
-      onTap: () async {
-        final uri = Uri(scheme: 'tel', path: phone); // tel:991, tel:999, etc.
-
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication, // opens phone app
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open dialer')),
-          );
-        }
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: false,
+          builder: (_) => _EmergencyBottomSheet(
+            title: name,
+            phone: phone,
+            url: url,
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -534,7 +561,13 @@ class _EmergencyTile extends StatelessWidget {
             if (asset != null)
               Expanded(child: Image.asset(asset!, fit: BoxFit.contain))
             else
-              Expanded(child: Icon(icon, size: 36, color: scheme.onSurfaceVariant)),
+              Expanded(
+                child: Icon(
+                  icon,
+                  size: 36,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
             const SizedBox(height: 6),
             Text(
               name,
@@ -542,18 +575,14 @@ class _EmergencyTile extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
             ),
-            const SizedBox(height: 2),
-            Text(
-              phone, // show the number under the label (optional)
-              style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),
     );
   }
 }
+
+
 
 class _EmptyStrip extends StatelessWidget {
   final IconData icon;
@@ -577,6 +606,147 @@ class _EmptyStrip extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: Text(message, style: text.bodyMedium)),
         ],
+      ),
+    );
+  }
+}
+class _EmergencyBottomSheet extends StatelessWidget {
+  final String title;
+  final String phone;
+  final String? url;
+
+  const _EmergencyBottomSheet({
+    super.key,
+    required this.title,
+    required this.phone,
+    this.url,
+  });
+
+  Future<void> _launchPhone(String phone) async {
+    final uri = Uri(scheme: 'tel', path: phone);
+    await launchUrl(uri);
+  }
+
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(16),
+          ),
+          border: Border.all(
+            color: mycolors.Primary,
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(0, -2),
+              color: Colors.black.withOpacity(0.06),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // drag handle
+            Container(
+              width: 40,
+              height: 3,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: mycolors.Primary,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+
+            // header row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: mycolors.textPrimary,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Text(
+                    'Done',
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: mycolors.Primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+            Divider(height: 1, color: theme.dividerColor),
+
+            // 📞 phone tile
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.phone_outlined,
+                size: 22,
+                color: theme.iconTheme.color,
+              ),
+              title: Text(
+                phone, // <- this should show, e.g. 999
+                style: textTheme.bodyMedium?.copyWith(
+                  color: mycolors.textPrimary,
+                ),
+              ),
+              onTap: () => _launchPhone(phone),
+            ),
+
+            if (url != null && url!.isNotEmpty) ...[
+              Divider(height: 1, color: theme.dividerColor),
+
+              // 🌐 website tile
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.public_outlined,
+                  size: 22,
+                  color: theme.iconTheme.color,
+                ),
+                title: Text(
+                  'Visit website',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: mycolors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  url!,
+                  style: textTheme.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: () => _launchUrl(url!),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
