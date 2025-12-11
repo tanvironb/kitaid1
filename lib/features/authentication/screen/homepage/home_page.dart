@@ -133,7 +133,6 @@ class _HomePageState extends State<HomePage> {
     EmergencyLink(
       id: 'police',
       name: 'Police',
-      url: 'https://www.rmp.gov.my/',
       icon: Icons.local_police_outlined,
     ),
   ];
