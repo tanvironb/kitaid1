@@ -4,9 +4,6 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// If you have a bottom nav widget:
-//import 'package:kitaid1/widgets/kita_bottom_nav.dart'; // adjust path if needed
-
 /// --------------------------
 /// DATA LAYERS / HOOK POINTS
 /// --------------------------
@@ -38,15 +35,15 @@ class ProfileRepository extends ChangeNotifier {
 class UserProfile {
   final String uid;
   final String? displayName; // null until available
-  final String? photoUrl;    // null = show default avatar
+  final String? photoUrl; // null = show default avatar
   const UserProfile({required this.uid, this.displayName, this.photoUrl});
 }
 
 class UserCard {
   final String id;
-  final String title;       // e.g., "MyKad", "Passport", "Driver's License"
-  final IconData? icon;     // fallback icon until you plug logos
-  final String? assetLogo;  // when you have a logo asset
+  final String title; // e.g., "MyKad", "Passport", "Driver's License"
+  final IconData? icon; // fallback icon until you plug logos
+  final String? assetLogo; // when you have a logo asset
   const UserCard({
     required this.id,
     required this.title,
@@ -76,8 +73,8 @@ class RecentServicesStore extends ChangeNotifier {
 }
 
 class ServiceRef {
-  final String id;    // stable id, e.g., "jpj", "immigration"
-  final String name;  // display name
+  final String id; // stable id, e.g., "jpj", "immigration"
+  final String name; // display name
   const ServiceRef(this.id, this.name);
 }
 
@@ -85,8 +82,8 @@ class ServiceRef {
 class EmergencyLink {
   final String id;
   final String name;
-  final String phone;      // non-null
-  final String? url;       // optional
+  final String phone; // non-null
+  final String? url; // optional
   final String? asset;
   final IconData? icon;
 
@@ -100,7 +97,6 @@ class EmergencyLink {
   });
 }
 
-
 /// --------------------------
 /// HOME PAGE
 /// --------------------------
@@ -112,14 +108,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
-
   // Example emergency shortcuts — replace URLs/logos later.
   final List<EmergencyLink> _emergency = const [
     EmergencyLink(
       id: 'jpj',
       name: 'JPJ',
-      icon: Icons.directions_car_filled_outlined, 
+      icon: Icons.directions_car_filled_outlined,
       phone: '03-8000 8000',
       url: 'https://www.jpj.gov.my/',
     ),
@@ -128,12 +122,11 @@ class _HomePageState extends State<HomePage> {
       name: 'Immigration',
       phone: '03-8000 8000',
       url: 'https://www.imi.gov.my/',
-      //icon: Icons.passport_outlined,
     ),
     EmergencyLink(
       id: 'hkl',
       name: 'HKL',
-      icon: Icons.local_hospital_outlined, 
+      icon: Icons.local_hospital_outlined,
       phone: '03-2615 5555',
       url: 'https://hkl.moh.gov.my/',
     ),
@@ -166,14 +159,6 @@ class _HomePageState extends State<HomePage> {
     final text = Theme.of(context).textTheme;
 
     return Scaffold(
-      // ⚠ No AppBar (as requested)
-      // bottomNavigationBar: KitaBottomNav(
-      //   currentIndex: _currentIndex,
-      //   onTabSelected: (i) {
-      //     setState(() => _currentIndex = i);
-      //     // TODO: handle tab routing
-      //   },
-      // ),
       body: SafeArea(
         child: AnimatedBuilder(
           // Rebuild when profile or recents change.
@@ -199,25 +184,27 @@ class _HomePageState extends State<HomePage> {
                       // -----------------------
                       Row(
                         children: [
-                          // Make avatar a button → navigates to Profile page
-GestureDetector(
-  onTap: () {
-    // If your route is named '/profile', keep this.
-    // If you’re still using '/settings' as the profile page, change to '/settings'.
-    Navigator.pushNamed(context, '/profile');
-  },
-  child: CircleAvatar(
-    radius: 28,
-    backgroundColor: scheme.secondaryContainer,
-    backgroundImage: (profile?.photoUrl?.isNotEmpty ?? false)
-        ? NetworkImage(profile!.photoUrl!)
-        : null,
-    child: (profile?.photoUrl?.isNotEmpty ?? false)
-        ? null
-        : Icon(Icons.person, color: scheme.onSecondaryContainer, size: 28),
-  ),
-),
-
+                          // Avatar → Profile page
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pushNamed(context, '/profile');
+                            },
+                            child: CircleAvatar(
+                              radius: 28,
+                              backgroundColor: scheme.secondaryContainer,
+                              backgroundImage:
+                                  (profile?.photoUrl?.isNotEmpty ?? false)
+                                      ? NetworkImage(profile!.photoUrl!)
+                                      : null,
+                              child: (profile?.photoUrl?.isNotEmpty ?? false)
+                                  ? null
+                                  : Icon(
+                                      Icons.person,
+                                      color: scheme.onSecondaryContainer,
+                                      size: 28,
+                                    ),
+                            ),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -225,15 +212,15 @@ GestureDetector(
                               children: [
                                 Text(
                                   'Hi ${profile?.displayName?.trim().isNotEmpty == true ? profile!.displayName!.trim() : "there"}',
-                                  style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700, color:  mycolors.Primary, ),
+                                  style: text.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: mycolors.Primary,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                
                               ],
                             ),
                           ),
-                          // Big QR shortcut (tap area)
-                          
                         ],
                       ),
 
@@ -241,9 +228,26 @@ GestureDetector(
 
                       // -----------------------
                       // MY CARDS (from Profile)
-                      // Only show when user is logged in AND cards are available
+                      // + See all → Profile page
                       // -----------------------
-                      Text('My Cards', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: mycolors.textHeading,)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'My Cards',
+                            style: text.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: mycolors.textHeading,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/profile');
+                            },
+                            child: const Text('See all'),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
 
                       if (profile == null || cards.isEmpty) ...[
@@ -257,7 +261,8 @@ GestureDetector(
                         GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
@@ -265,17 +270,17 @@ GestureDetector(
                           ),
                           itemCount: cards.length,
                           itemBuilder: (context, i) {
-  final e = _emergency[i];
-  return _EmergencyTile(
-    name: e.name,
-    phone: e.phone,
-    url: e.url,
-    icon: e.icon ?? Icons.emergency_share_outlined,
-    asset: e.asset,
-  );
-},
-
-
+                            final c = cards[i];
+                            return _CardPill(
+                              title: c.title,
+                              assetLogo: c.assetLogo,
+                              icon: c.icon ?? Icons.credit_card,
+                              onTap: () {
+                                // go to profile where user can see all cards
+                                Navigator.pushNamed(context, '/profile');
+                              },
+                            );
+                          },
                         ),
                       ],
 
@@ -283,15 +288,21 @@ GestureDetector(
 
                       // -----------------------
                       // RECENT SERVICES
-                      // driven by RecentServicesStore
+                      // See all → Services page
                       // -----------------------
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Recent Services', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: mycolors.textHeading,)),
+                          Text(
+                            'Recent Services',
+                            style: text.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: mycolors.textHeading,
+                            ),
+                          ),
                           TextButton(
                             onPressed: () {
-                              // TODO: navigate to Services main page
+                              Navigator.pushNamed(context, '/services');
                             },
                             child: const Text('See all'),
                           ),
@@ -310,13 +321,16 @@ GestureDetector(
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: recents.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 8),
                             itemBuilder: (context, i) {
                               final s = recents[i];
                               return _ChipButton(
                                 label: s.name,
                                 onTap: () {
-                                  // TODO: go directly to that service
+                                  // Optional: route to services page for now
+                                  Navigator.pushNamed(context, '/services');
+                                  // Later: pass s.id to open exact service page
                                 },
                               );
                             },
@@ -326,15 +340,22 @@ GestureDetector(
                       const SizedBox(height: 24),
 
                       // -----------------------
-                      // EMERGENCY (logos linking out)
+                      // EMERGENCY (bottomsheet)
                       // -----------------------
-                      Text('Emergency', style: text.titleMedium?.copyWith(fontWeight: FontWeight.w700,color: mycolors.textHeading,)),
+                      Text(
+                        'Emergency',
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: mycolors.textHeading,
+                        ),
+                      ),
                       const SizedBox(height: 10),
 
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 3,
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
@@ -342,16 +363,15 @@ GestureDetector(
                         ),
                         itemCount: _emergency.length,
                         itemBuilder: (context, i) {
-  final e = _emergency[i];
-  return _EmergencyTile(
-    name: e.name,
-    phone: e.phone,
-    url: e.url,
-    icon: e.icon ?? Icons.emergency_share_outlined,
-    asset: e.asset,
-  );
-},
-
+                          final e = _emergency[i];
+                          return _EmergencyTile(
+                            name: e.name,
+                            phone: e.phone,
+                            url: e.url,
+                            icon: e.icon ?? Icons.emergency_share_outlined,
+                            asset: e.asset,
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 12),
@@ -363,30 +383,36 @@ GestureDetector(
           },
         ),
       ),
+
+      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 0, // <-- change this per page
+        currentIndex: 0, // HOME
         onTap: (index) {
           if (index == 0) return; // already on this page
-          
+
           switch (index) {
             case 0: // HOME
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
 
             case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
 
             case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
 
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
 
             case 4: // PROFILE
-              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/profile', (_) => false);
               break;
           }
         },
@@ -402,7 +428,8 @@ class _RoundedSquareButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _RoundedSquareButton({required this.icon, required this.label, required this.onTap});
+  const _RoundedSquareButton(
+      {required this.icon, required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -421,7 +448,10 @@ class _RoundedSquareButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 24, color: scheme.onPrimaryContainer),
-            Text(label, style: text.labelSmall?.copyWith(color: scheme.onPrimaryContainer)),
+            Text(label,
+                style: text.labelSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                )),
           ],
         ),
       ),
@@ -434,7 +464,11 @@ class _CardPill extends StatelessWidget {
   final String? assetLogo;
   final IconData icon;
   final VoidCallback onTap;
-  const _CardPill({required this.title, required this.onTap, this.assetLogo, required this.icon});
+  const _CardPill(
+      {required this.title,
+      required this.onTap,
+      this.assetLogo,
+      required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -457,7 +491,10 @@ class _CardPill extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     color: scheme.onPrimaryContainer.withOpacity(0.08),
-                    image: DecorationImage(image: AssetImage(assetLogo!), fit: BoxFit.contain),
+                    image: DecorationImage(
+                      image: AssetImage(assetLogo!),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 )
               else
@@ -582,8 +619,6 @@ class _EmergencyTile extends StatelessWidget {
   }
 }
 
-
-
 class _EmptyStrip extends StatelessWidget {
   final IconData icon;
   final String message;
@@ -610,6 +645,7 @@ class _EmptyStrip extends StatelessWidget {
     );
   }
 }
+
 class _EmergencyBottomSheet extends StatelessWidget {
   final String title;
   final String phone;
@@ -711,7 +747,7 @@ class _EmergencyBottomSheet extends StatelessWidget {
                 color: theme.iconTheme.color,
               ),
               title: Text(
-                phone, // <- this should show, e.g. 999
+                phone,
                 style: textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
                 ),
