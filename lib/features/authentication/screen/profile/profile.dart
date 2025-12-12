@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
+import 'package:kitaid1/features/authentication/screen/profile/card_detail_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
-
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -11,8 +11,6 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-/// Simple user model for now.
-/// Later you can replace this with data coming from your backend / login.
 class _UserProfile {
   final String name;
   final String id;
@@ -27,12 +25,10 @@ class _UserProfile {
   });
 }
 
-/// Model representing ONE card that belongs to the user.
-/// Later: fill this list from backend (IC, passport, license, etc.).
 class ProfileCardItem {
-  final String title;       // e.g. "MyKad"
-  final String idLabel;     // e.g. "ID: 123456-78-9012"
-  final String? imageAsset; // optional, big preview
+  final String title;
+  final String idLabel;
+  final String? imageAsset;
 
   const ProfileCardItem({
     required this.title,
@@ -41,10 +37,9 @@ class ProfileCardItem {
   });
 }
 
-/// Model representing ONE document that belongs to the user.
 class ProfileDocItem {
-  final String title;       // e.g. "Passport Scan"
-  final String description; // e.g. "Uploaded on 01/12/2025"
+  final String title;
+  final String description;
 
   const ProfileDocItem({
     required this.title,
@@ -53,19 +48,15 @@ class ProfileDocItem {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  int _selectedTab = 0; // 0 = Cards, 1 = Docs
+  int _selectedTab = 0;
 
-  // TODO: When you have backend:
-  //  - Replace this dummy user with real data loaded using IC / passport.
   final _UserProfile _user = const _UserProfile(
-    name: 'Tanvir',          // <- will come from IC/passport login later
-    id: 'A02581787',         // <- IC / passport number or internal ID
+    name: 'Tanvir',
+    id: 'A02581787',
     country: 'Bangladesh',
     dateOfBirth: '27/10/2001',
   );
 
-  // ====== DUMMY DATA FOR NOW ======
-  // Later: Replace these with data from backend, filtered by _user.id / IC.
   final List<ProfileCardItem> _cards = const [
     ProfileCardItem(
       title: 'MyKad',
@@ -89,7 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
       description: 'Uploaded on 15/11/2025',
     ),
   ];
-  // =================================
 
   @override
   Widget build(BuildContext context) {
@@ -97,8 +87,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-
-      // ---------- APP BAR ----------
       appBar: AppBar(
         backgroundColor: mycolors.Primary,
         foregroundColor: Colors.white,
@@ -117,21 +105,15 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-
-      // ---------- BODY ----------
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(mysizes.defaultspace),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ----- Profile header -----
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ============================
-                  // SECTION 1: Profile + Name + ID
-                  // ============================
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -141,9 +123,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           'assets/images/profile_placeholder.png',
                         ),
                       ),
-
                       const SizedBox(width: 16),
-
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -163,25 +143,16 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ],
                       ),
-
                       const Spacer(),
-
                       IconButton(
                         icon: const Icon(Icons.more_horiz),
                         onPressed: () {},
                       ),
                     ],
                   ),
-
-                  // ------ GAP BETWEEN SECTIONS ------
                   const SizedBox(height: 22),
-
-                  // ============================
-                  // SECTION 2: Country + DOB
-                  // ============================
                   Row(
                     children: [
-                      // Country Block
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -202,10 +173,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(width: 40),
-
-                      // DOB Block
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -230,19 +198,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ],
               ),
-
               const SizedBox(height: mysizes.spacebtwsections),
-
-              // ----- Tabs: Cards / Docs -----
               Row(
                 children: [
                   Expanded(
                     child: _SegmentTab(
                       label: 'Cards',
                       selected: _selectedTab == 0,
-                      onTap: () {
-                        setState(() => _selectedTab = 0);
-                      },
+                      onTap: () => setState(() => _selectedTab = 0),
                     ),
                   ),
                   const SizedBox(width: mysizes.spacebtwitems),
@@ -250,25 +213,33 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: _SegmentTab(
                       label: 'Docs',
                       selected: _selectedTab == 1,
-                      onTap: () {
-                        setState(() => _selectedTab = 1);
-                      },
+                      onTap: () => setState(() => _selectedTab = 1),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: mysizes.spacebtwsections),
-
-              // ----- Tab content -----
               if (_selectedTab == 0)
                 _CardsSection(
                   cards: _cards,
+                  onCardTap: (card) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CardDetailPage(
+                          cardTitle: card.title,
+                          cardIdLabel: card.idLabel,
+                          imageAsset: card.imageAsset,
+                          ownerName: _user.name,
+                          ownerDob: _user.dateOfBirth,
+                          ownerCountry: _user.country,
+                        ),
+                      ),
+                    );
+                  },
                 )
               else
-                _DocsSection(
-                  docs: _docs,
-                ),
+                _DocsSection(docs: _docs),
             ],
           ),
         ),
@@ -276,28 +247,24 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4, // <-- change this per page
+        currentIndex: 4,
         onTap: (index) {
-          if (index == 4) return; // already on this page
+          if (index == 4) return;
 
           switch (index) {
-            case 0: // HOME
+            case 0:
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
-
-            case 1: // CHATBOT
+            case 1:
               Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
-
-            case 2: // SERVICES
+            case 2:
               Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
-
-            case 3: // NOTIFICATIONS
+            case 3:
               Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
-
-            case 4: // PROFILE
+            case 4:
               Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
@@ -306,8 +273,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-
-// ================== SMALL WIDGETS ==================
 
 class _SegmentTab extends StatelessWidget {
   const _SegmentTab({
@@ -328,9 +293,7 @@ class _SegmentTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: selected ? mycolors.Primary : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
@@ -349,9 +312,13 @@ class _SegmentTab extends StatelessWidget {
 }
 
 class _CardsSection extends StatelessWidget {
-  const _CardsSection({required this.cards});
+  const _CardsSection({
+    required this.cards,
+    required this.onCardTap,
+  });
 
   final List<ProfileCardItem> cards;
+  final void Function(ProfileCardItem card) onCardTap;
 
   @override
   Widget build(BuildContext context) {
@@ -360,9 +327,7 @@ class _CardsSection extends StatelessWidget {
     if (cards.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: mysizes.spacebtwsections,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
           child: Text(
             'No cards yet.',
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -377,7 +342,11 @@ class _CardsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final card in cards) ...[
-          _CardTile(card: card, theme: theme),
+          _CardTile(
+            card: card,
+            theme: theme,
+            onTap: () => onCardTap(card),
+          ),
           const SizedBox(height: mysizes.spacebtwitems),
         ],
       ],
@@ -389,64 +358,66 @@ class _CardTile extends StatelessWidget {
   const _CardTile({
     required this.card,
     required this.theme,
+    required this.onTap,
   });
 
   final ProfileCardItem card;
   final ThemeData theme;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Card preview (image or placeholder)
-          AspectRatio(
-            aspectRatio: 1.6,
-            child: card.imageAsset != null
-                ? Image.asset(
-                    card.imageAsset!,
-                    fit: BoxFit.cover,
-                  )
-                : Container(
-                    color: mycolors.bgPrimary,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${card.title} Preview',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: mycolors.textPrimary,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 1.6,
+              child: card.imageAsset != null
+                  ? Image.asset(card.imageAsset!, fit: BoxFit.cover)
+                  : Container(
+                      color: mycolors.bgPrimary,
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${card.title} Preview',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: mycolors.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  card.title,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: mycolors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  card.idLabel,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: mycolors.textPrimary,
-                  ),
-                ),
-              ],
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    card.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: mycolors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    card.idLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: mycolors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -464,9 +435,7 @@ class _DocsSection extends StatelessWidget {
     if (docs.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: mysizes.spacebtwsections,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
           child: Text(
             'No documents yet.',
             style: theme.textTheme.bodyMedium?.copyWith(
