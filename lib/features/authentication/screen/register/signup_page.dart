@@ -15,7 +15,6 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _name = TextEditingController();
   final _ic = TextEditingController();
   final _email = TextEditingController();
@@ -38,12 +37,14 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  String? _req(String? v) => (v == null || v.trim().isEmpty) ? 'Required' : null;
+  String? _req(String? v) =>
+      (v == null || v.trim().isEmpty) ? 'Required' : null;
 
   String? _emailV(String? v) {
     if (_req(v) != null) return 'Required';
     final e = v!.trim();
-    final ok = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
+    final ok =
+        RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
     return ok ? null : 'Invalid email';
   }
 
@@ -72,13 +73,11 @@ class _SignUpPageState extends State<SignUpPage> {
 
     setState(() => _loading = true);
 
-    // TODO: Call your backend to create a pending user & send OTP to _phone.text
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
     setState(() => _loading = false);
 
-    // 👉 Navigate to OTP page
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -101,17 +100,27 @@ class _SignUpPageState extends State<SignUpPage> {
     final w = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: mycolors.Primary, // Blue page background
+      backgroundColor: mycolors.Primary,
+
+      // ✅ BACK BUTTON ADDED HERE
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(15.0),
             child: Form(
-              key: _formKey, // 👈 form key
+              key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ===== Header =====
                   Text(
                     mytitle.signupTitle,
                     style: Theme.of(context)
@@ -134,7 +143,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 80),
 
-                  // Name
+                  // --- FORM FIELDS (unchanged) ---
                   TextFormField(
                     controller: _name,
                     validator: _req,
@@ -150,7 +159,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // IC No.
                   TextFormField(
                     controller: _ic,
                     validator: _req,
@@ -166,7 +174,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Email
                   TextFormField(
                     controller: _email,
                     validator: _emailV,
@@ -182,7 +189,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Phone
                   TextFormField(
                     controller: _phone,
                     validator: _phoneV,
@@ -199,7 +205,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Password
                   TextFormField(
                     controller: _password,
                     obscureText: _obscurePw,
@@ -214,20 +219,18 @@ class _SignUpPageState extends State<SignUpPage> {
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePw ? Icons.visibility_off : Icons.visibility,
+                          _obscurePw
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                           color: mycolors.textPrimary,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePw = !_obscurePw;
-                          });
-                        },
+                        onPressed: () =>
+                            setState(() => _obscurePw = !_obscurePw),
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
 
-                  // Confirm Password
                   TextFormField(
                     controller: _confirm,
                     obscureText: _obscureConfirm,
@@ -247,18 +250,14 @@ class _SignUpPageState extends State<SignUpPage> {
                               : Icons.visibility,
                           color: mycolors.textPrimary,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirm = !_obscureConfirm;
-                          });
-                        },
+                        onPressed: () => setState(
+                            () => _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 70),
 
-                  // Next button
                   Center(
                     child: SizedBox(
                       width: w * 0.3,
@@ -271,8 +270,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             vertical: mysizes.btnheight,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(mysizes.borderRadiusLg),
+                            borderRadius: BorderRadius.circular(
+                                mysizes.borderRadiusLg),
                           ),
                           elevation: 0,
                         ),
@@ -280,7 +279,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
                               )
                             : const Text('Next'),
                       ),
