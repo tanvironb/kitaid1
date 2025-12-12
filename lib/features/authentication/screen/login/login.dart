@@ -1,4 +1,4 @@
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
@@ -6,154 +6,294 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<Offset> _sheetSlide;
+  late final Animation<double> _sheetFade;
+
+  bool _hidePassword = true;
+
+  final _icController = TextEditingController();
+  final _pwController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _sheetSlide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _sheetFade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.85)),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _icController.dispose();
+    _pwController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _pillDecoration({
+    required String hint,
+    required Widget suffix,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(
+        color: Colors.black.withOpacity(0.45),
+        fontSize: mysizes.fontSm,
+      ),
+      filled: true,
+      fillColor: Colors.grey.shade400.withOpacity(0.65),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(999),
+        borderSide: BorderSide(
+          color: mycolors.Primary.withOpacity(0.35),
+          width: 1.2,
+        ),
+      ),
+      suffixIcon: Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: suffix,
+      ),
+      suffixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: mycolors.Primary, // Blue page background
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(15.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ===== Header =====
-                Text(
-                  mytitle.loginTitle, // "Login"
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineLarge
-                      ?.copyWith(color: Colors.white, 
-                      letterSpacing: 4),
-                      
-                  textAlign: TextAlign.center,
+        child: Stack(
+          children: [
+            // ===== SAME BACKGROUND AS SPLASH =====
+              Positioned.fill(
+                child: Container(
+                  color: const Color.fromARGB(255, 0, 98, 245),
                 ),
-                const SizedBox(height: mysizes.spacebtwsections),
+              ),
 
-                // ===== Form =====
-                // IC
-                Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center, 
-                   children: [
-                    TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  decoration: const InputDecoration(
-                    labelText: mytitle.icno,
-                    // force white field
-                    filled: true,
-                    fillColor: Colors.white,
-                    
-                  
+              // ===== LOGO (NO BLUR, JUST SOFT OPACITY) =====
+              Positioned.fill(
+                child: Center(
+                  child: Opacity(
+                    opacity: 0.08,
+                    child: Image.asset(
+                      "assets/logo.png",
+                      width: MediaQuery.of(context).size.width * 1.0,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
-                   ],
-                ),
-                
-                const SizedBox(height: mysizes.spacebtwitems),
+              ),
 
-                // Password
-                Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     TextFormField(
-                      style: const TextStyle(color: mycolors.textPrimary, fontSize: mysizes.fontSm),
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: mytitle.password,
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
 
-                ],
-                ),
-               
-                const SizedBox(height: mysizes.spacebtwsections),
-
-                // Login button (white)
-                Center(
-                  child: SizedBox(
-                  // width: double.infinity,
-                  width:  MediaQuery.of(context).size.width * 0.3,
-                  child: ElevatedButton(
-                    onPressed: () {
-                       Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const HomePage(),
+            // ===== Bottom sheet (animated) =====
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: FadeTransition(
+                opacity: _sheetFade,
+                child: SlideTransition(
+                  position: _sheetSlide,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(44),
+                      ),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withOpacity(0.95),
+                          Colors.white.withOpacity(0.88),
+                          Colors.blueGrey.shade50.withOpacity(0.90),
+                        ],
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // small down arrow bubble
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: mycolors.Primary,
+                              ),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: Colors.white,
+                                ),
+                                  onPressed: () {
+                                    FocusScope.of(context).unfocus(); // close keyboard only
+                                  },
+                              ),
                             ),
-                          );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: mycolors.textPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: mysizes.btnheight,
+                          ),
+
+                          const SizedBox(height: 6),
+
+                          // Title
+                          Text(
+                            mytitle.loginTitle.toUpperCase(),
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  letterSpacing: 5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black.withOpacity(0.85),
+                                ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // IC
+                          TextFormField(
+                            controller: _icController,
+                            style: TextStyle(
+                              color: Colors.black.withOpacity(0.85),
+                              fontSize: mysizes.fontSm,
+                            ),
+                            decoration: _pillDecoration(
+                              hint: mytitle.icno,
+                              suffix: Icon(
+                                Icons.person_outline_rounded,
+                                color: Colors.black.withOpacity(0.55),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // Password
+                          TextFormField(
+                            controller: _pwController,
+                            obscureText: _hidePassword,
+                            style: TextStyle(
+                              color: Colors.black.withOpacity(0.85),
+                              fontSize: mysizes.fontSm,
+                            ),
+                            decoration: _pillDecoration(
+                              hint: mytitle.password,
+                              suffix: IconButton(
+                                onPressed: () =>
+                                    setState(() => _hidePassword = !_hidePassword),
+                                icon: Icon(
+                                  _hidePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                  color: Colors.black.withOpacity(0.55),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Login button (blue)
+                          SizedBox(
+                            width: size.width * 0.35,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const HomePage()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: mycolors.Primary,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              child: const Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Footer
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Don’t have an account? ",
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.65),
+                                  fontSize: mysizes.fontSm,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (_) => const SignUpPage()),
+                                  );
+                                },
+                                child: Text(
+                                  "Sign UP!",
+                                  style: TextStyle(
+                                    color: Colors.black.withOpacity(0.85),
+                                    fontSize: mysizes.fontSm,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(mysizes.borderRadiusLg),
-                        side: const BorderSide(color: Colors.white),
-                      ),
-                      elevation: 0,
                     ),
-                    child: const Text('Login'),
-                    
                   ),
                 ),
-                ),
-                
-
-                const SizedBox(height: mysizes.spacebtwsections),
-
-                // ===== Footer =====
-                Column(
-                  children: [
-                    const Text(
-                      'Do not have account?',
-                      style: TextStyle(color: Colors.white,fontSize:mysizes.fontSm ),
-                    ),
-                    const SizedBox(height: mysizes.sm),
-
-                    // Signup button (white)
-                    SizedBox(
-                      //width: double.infinity,
-                      width:  MediaQuery.of(context).size.width * 0.3,
-                      child: ElevatedButton(
-                        onPressed: () {
-                           Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const SignUpPage(),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: mycolors.textPrimary,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: mysizes.btnheight,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(mysizes.borderRadiusLg),
-                            side: const BorderSide(color: Colors.white),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text('Sign Up'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
