@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/features/authentication/screen/profile/card_detail_page.dart';
+import 'package:kitaid1/features/authentication/screen/profile/doc_detail_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
@@ -111,6 +112,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ===== HEADER =====
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -198,7 +200,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ],
               ),
+
               const SizedBox(height: mysizes.spacebtwsections),
+
+              // ===== TABS =====
               Row(
                 children: [
                   Expanded(
@@ -218,7 +223,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ],
               ),
+
               const SizedBox(height: mysizes.spacebtwsections),
+
+              // ===== CONTENT =====
               if (_selectedTab == 0)
                 _CardsSection(
                   cards: _cards,
@@ -239,7 +247,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   },
                 )
               else
-                _DocsSection(docs: _docs),
+                _DocsSection(
+                  docs: _docs,
+                  onDocTap: (doc) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocDetailPage(
+                          docTitle: doc.title,
+                          docDescription: doc.description,
+                          ownerName: _user.name,
+                          ownerDob: _user.dateOfBirth,
+                          ownerCountry: _user.country,
+                          previewAsset: null, // later: set an image preview asset
+                        ),
+                      ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -423,10 +448,15 @@ class _CardTile extends StatelessWidget {
   }
 }
 
+// ✅ UPDATED DOCS SECTION (NOW TAPPABLE)
 class _DocsSection extends StatelessWidget {
-  const _DocsSection({required this.docs});
+  const _DocsSection({
+    required this.docs,
+    required this.onDocTap,
+  });
 
   final List<ProfileDocItem> docs;
+  final void Function(ProfileDocItem doc) onDocTap;
 
   @override
   Widget build(BuildContext context) {
@@ -468,9 +498,7 @@ class _DocsSection extends StatelessWidget {
                   color: mycolors.textPrimary,
                 ),
               ),
-              onTap: () {
-                // TODO: Open document viewer later
-              },
+              onTap: () => onDocTap(doc), // ✅ NOW OPENS DETAILS
             ),
           ),
           const SizedBox(height: mysizes.spacebtwitems),
