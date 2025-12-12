@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
@@ -22,6 +23,38 @@ class _ServicesPageState extends State<ServicesPage> {
     _Service(id: 'etiqa', name: 'Etiqa', suggested: false),
     _Service(id: 'mysejahtera', name: 'MySejahtera', suggested: false),
   ];
+
+  // ✅ Website mapping (tap service -> open url)
+  static const Map<String, String> _serviceUrls = {
+    'jpj': 'https://www.jpj.gov.my/',
+    'immigration': 'https://www.imi.gov.my/',
+    'jpn': 'https://www.jpn.gov.my/my/',
+    'etiqa': 'https://www.etiqa.com.my/',
+    'mysejahtera': 'https://mysejahtera.moh.gov.my/en/',
+  };
+
+  Future<void> _openServiceWebsite(BuildContext context, _Service s) async {
+    final url = _serviceUrls[s.id];
+    if (url == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Website not set for this service')),
+      );
+      return;
+    }
+
+    final uri = Uri.parse(url);
+
+    final ok = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication, // opens browser directly
+    );
+
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the website')),
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -74,13 +107,12 @@ class _ServicesPageState extends State<ServicesPage> {
             style: const TextStyle(color: mycolors.textPrimary),
             decoration: InputDecoration(
               hintText: 'Search',
-              prefixIcon:
-                  const Icon(Icons.search, color: mycolors.textPrimary),
+              prefixIcon: const Icon(Icons.search, color: mycolors.textPrimary),
               filled: true,
-              fillColor: Colors.white, // 👈 white search bar background
+              fillColor: Colors.white,
               hintStyle: const TextStyle(color: mycolors.textPrimary),
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
                 borderSide: const BorderSide(
@@ -88,8 +120,7 @@ class _ServicesPageState extends State<ServicesPage> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(
-                    color: mycolors.Primary, width: 2),
+                borderSide: const BorderSide(color: mycolors.Primary, width: 2),
               ),
             ),
           ),
@@ -102,14 +133,14 @@ class _ServicesPageState extends State<ServicesPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: mycolors.borderprimary.withOpacity(0.3)),
+              border:
+                  Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
             ),
-            child: Center(
+            child: const Center(
               child: Text(
                 'Slideshow / Promo Area\n(You can add images later)',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: mycolors.textPrimary),
+                style: TextStyle(color: mycolors.textPrimary),
               ),
             ),
           ),
@@ -137,9 +168,7 @@ class _ServicesPageState extends State<ServicesPage> {
                   final s = suggested[i];
                   return _ServiceChip(
                     service: s,
-                    onTap: () {
-                      // TODO: navigate to service flow for s.id
-                    },
+                    onTap: () => _openServiceWebsite(context, s),
                   );
                 },
               ),
@@ -169,8 +198,7 @@ class _ServicesPageState extends State<ServicesPage> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: others.length,
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
@@ -180,9 +208,7 @@ class _ServicesPageState extends State<ServicesPage> {
                 final s = others[i];
                 return _ServiceCard(
                   service: s,
-                  onTap: () {
-                    // TODO: navigate to service flow for s.id
-                  },
+                  onTap: () => _openServiceWebsite(context, s),
                 );
               },
             ),
@@ -191,28 +217,25 @@ class _ServicesPageState extends State<ServicesPage> {
 
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 2, // <-- change this per page
+        currentIndex: 2,
         onTap: (index) {
-          if (index == 2) return; // already on this page
+          if (index == 2) return;
 
           switch (index) {
-            case 0: // HOME
+            case 0:
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
-
-            case 1: // CHATBOT
+            case 1:
               Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
-
-            case 2: // SERVICES
+            case 2:
               Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
-
-            case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+            case 3:
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
-
-            case 4: // PROFILE
+            case 4:
               Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
@@ -250,16 +273,15 @@ class _ServiceChip extends StatelessWidget {
         width: 140,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: mycolors.btnSecondary, // accent button color
+          color: mycolors.btnSecondary,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            // ⭕ Placeholder for logo
             const CircleAvatar(
               radius: 22,
               backgroundColor: mycolors.Primary,
-              child: Icon(Icons.image_outlined, color: Colors.white),
+              child: Icon(Icons.public, color: Colors.white),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -296,17 +318,16 @@ class _ServiceCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: mycolors.borderprimary.withOpacity(0.3)),
+          border:
+              Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ⭕ Placeholder for service logo
             const CircleAvatar(
               radius: 24,
               backgroundColor: mycolors.Primary,
-              child: Icon(Icons.image_outlined, color: Colors.white),
+              child: Icon(Icons.public, color: Colors.white),
             ),
             const Spacer(),
             Text(
@@ -337,8 +358,8 @@ class _EmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: mycolors.borderprimary.withOpacity(0.3)),
+        border:
+            Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -347,8 +368,7 @@ class _EmptyState extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style:
-                  const TextStyle(color: mycolors.textPrimary),
+              style: const TextStyle(color: mycolors.textPrimary),
             ),
           ),
         ],
