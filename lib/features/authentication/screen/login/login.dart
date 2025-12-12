@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
+import 'package:kitaid1/features/services/biometric_auth_service.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
@@ -24,6 +25,11 @@ class _LoginScreenState extends State<LoginScreen>
   final _icController = TextEditingController();
   final _pwController = TextEditingController();
 
+  // ✅ Biometric state
+  bool _bioSupported = false;
+  bool _bioEnabled = false;
+  bool _bioLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +49,54 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _controller.forward();
+
+    // ✅ Load biometric availability + user preference
+    _loadBiometric();
+  }
+
+  Future<void> _loadBiometric() async {
+    final bio = BiometricAuthService.instance;
+    final supported = await bio.isDeviceSupported();
+    final enabled = await bio.isEnabled();
+
+    if (!mounted) return;
+    setState(() {
+      _bioSupported = supported;
+      _bioEnabled = enabled;
+    });
+  }
+
+  Future<void> _biometricLogin() async {
+    if (_bioLoading) return;
+
+    final bio = BiometricAuthService.instance;
+
+    // re-check in case user changed settings
+    final supported = await bio.isDeviceSupported();
+    final enabled = await bio.isEnabled();
+
+    if (!supported || !enabled) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Biometric login is not enabled.')),
+      );
+      return;
+    }
+
+    setState(() => _bioLoading = true);
+
+    final ok = await bio.authenticate(reason: 'Login to KitaID');
+
+    if (!mounted) return;
+    setState(() => _bioLoading = false);
+
+    if (!ok) return;
+
+    // ✅ For now, go to home. Later, check FirebaseAuth currentUser.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const HomePage()),
+    );
   }
 
   @override
@@ -93,31 +147,32 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
+    final showBiometricButton = _bioSupported && _bioEnabled;
+
     return Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
             // ===== SAME BACKGROUND AS SPLASH =====
-              Positioned.fill(
-                child: Container(
-                  color: const Color.fromARGB(255, 0, 98, 245),
-                ),
+            Positioned.fill(
+              child: Container(
+                color: const Color.fromARGB(255, 0, 98, 245),
               ),
+            ),
 
-              // ===== LOGO (NO BLUR, JUST SOFT OPACITY) =====
-              Positioned.fill(
-                child: Center(
-                  child: Opacity(
-                    opacity: 0.08,
-                    child: Image.asset(
-                      "assets/logo.png",
-                      width: MediaQuery.of(context).size.width * 1.0,
-                      fit: BoxFit.contain,
-                    ),
+            // ===== LOGO (NO BLUR, JUST SOFT OPACITY) =====
+            Positioned.fill(
+              child: Center(
+                child: Opacity(
+                  opacity: 0.08,
+                  child: Image.asset(
+                    "assets/logo.png",
+                    width: MediaQuery.of(context).size.width * 1.0,
+                    fit: BoxFit.contain,
                   ),
                 ),
               ),
-
+            ),
 
             // ===== Bottom sheet (animated) =====
             Align(
@@ -162,9 +217,9 @@ class _LoginScreenState extends State<LoginScreen>
                                   Icons.keyboard_arrow_down_rounded,
                                   color: Colors.white,
                                 ),
-                                  onPressed: () {
-                                    FocusScope.of(context).unfocus(); // close keyboard only
-                                  },
+                                onPressed: () {
+                                  FocusScope.of(context).unfocus();
+                                },
                               ),
                             ),
                           ),
@@ -255,6 +310,24 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
 
+                          // ✅ Biometric button (only if enabled)
+                          if (showBiometricButton) ...[
+                            const SizedBox(height: 10),
+                            IconButton(
+                              onPressed: _bioLoading ? null : _biometricLogin,
+                              icon: _bioLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.fingerprint),
+                              iconSize: 34,
+                              color: mycolors.Primary,
+                              tooltip: 'Login with biometrics',
+                            ),
+                          ],
+
                           const SizedBox(height: 16),
 
                           // Footer
@@ -286,6 +359,19 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ],
                           ),
+
+                          // ✅ Small helper text if device supports but user didn’t enable yet
+                          if (_bioSupported && !_bioEnabled) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              'Enable Biometric Login from Settings to use fingerprint / Face ID.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.black.withOpacity(0.55),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
