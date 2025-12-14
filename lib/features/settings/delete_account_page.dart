@@ -4,6 +4,9 @@ import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
+// ✅ If you DON'T have a named route '/login', uncomment the import below
+// and update the path to your actual login page file.
+// import 'package:kitaid1/features/authentication/screen/login/login.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -19,6 +22,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
       context: context,
+      barrierDismissible: !_isDeleting,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm deletion'),
         content: const Text(
@@ -27,7 +31,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
+            onPressed: _isDeleting ? null : () => Navigator.pop(ctx, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -35,27 +39,44 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Colors.white,
             ),
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: _isDeleting ? null : () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
         ],
       ),
     );
 
-    if (ok == true) {
-      setState(() => _isDeleting = true);
+    if (ok != true) return;
 
-      // TODO: Connect to your backend or Firebase account deletion function.
+    setState(() => _isDeleting = true);
+
+    try {
+      // TODO: Connect to your backend or Firebase delete function.
       await Future.delayed(const Duration(seconds: 1));
 
       if (!mounted) return;
-      setState(() => _isDeleting = false);
+
+      // Optional success snackbar (won't show long because we navigate)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Your account has been deleted.')),
       );
 
-      // TODO: Redirect to login/onboarding after deletion
-      // Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (_) => false);
+      // ✅ Go to Login and remove everything else from back stack
+      // Recommended: use named route (make sure '/login' exists in MaterialApp routes)
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+
+      // ✅ If you DON'T have '/login' route, use this instead (and import your login widget):
+      // Navigator.pushAndRemoveUntil(
+      //   context,
+      //   MaterialPageRoute(builder: (_) => const LoginScreen()),
+      //   (_) => false,
+      // );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e')),
+      );
     }
   }
 
@@ -71,7 +92,6 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -79,19 +99,16 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
             child: ListView(
               padding: const EdgeInsets.all(mysizes.defaultspace),
               children: [
-                // ===== Warning Section =====
                 Container(
                   padding: const EdgeInsets.all(mysizes.lg),
                   decoration: BoxDecoration(
                     color: mycolors.Primary.withOpacity(0.06),
-                    borderRadius:
-                        BorderRadius.circular(mysizes.borderRadiusLg),
+                    borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded,
-                          size: 40, color: error),
+                      Icon(Icons.warning_amber_rounded, size: 40, color: error),
                       const SizedBox(width: mysizes.spacebtwitems),
                       Expanded(
                         child: Column(
@@ -117,16 +134,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: mysizes.spacebtwsections),
-
-                // ===== Impact List =====
                 Card(
                   elevation: 0,
                   color: theme.cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(mysizes.borderRadiusLg),
+                    borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
                     side: BorderSide(
                       color: mycolors.borderprimary.withOpacity(0.5),
                       width: 1,
@@ -144,13 +157,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: mysizes.spacebtwsections),
-
-                // ===== Acknowledgement =====
                 CheckboxListTile(
                   value: _acknowledged,
-                  onChanged: (v) => setState(() => _acknowledged = v ?? false),
+                  onChanged: _isDeleting
+                      ? null
+                      : (v) => setState(() => _acknowledged = v ?? false),
                   controlAffinity: ListTileControlAffinity.leading,
                   title: Text(
                     'I understand this action is permanent.',
@@ -159,16 +171,12 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   ),
                   contentPadding: EdgeInsets.zero,
                 ),
-
                 const SizedBox(height: mysizes.spacebtwsections),
-
-                // ===== Buttons =====
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed:
-                            _isDeleting ? null : () => Navigator.pop(context),
+                        onPressed: _isDeleting ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               vertical: mysizes.btnheight),
@@ -176,8 +184,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                             color: mycolors.textPrimary.withOpacity(0.3),
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                mysizes.borderRadiusLg),
+                            borderRadius:
+                                BorderRadius.circular(mysizes.borderRadiusLg),
                           ),
                         ),
                         child: const Text('Oops, I changed my mind!'),
@@ -186,16 +194,17 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     const SizedBox(width: mysizes.spacebtwitems),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed:
-                            (!_acknowledged || _isDeleting) ? null : _confirmDelete,
+                        onPressed: (!_acknowledged || _isDeleting)
+                            ? null
+                            : _confirmDelete,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: error,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                               vertical: mysizes.btnheight),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                mysizes.borderRadiusLg),
+                            borderRadius:
+                                BorderRadius.circular(mysizes.borderRadiusLg),
                           ),
                           elevation: 0,
                         ),
@@ -218,9 +227,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 4, // Settings tab active
+        currentIndex: 4,
         onTap: (index) {
-          if (index == 4) return; // already here
+          if (index == 4) return;
           switch (index) {
             case 0:
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
