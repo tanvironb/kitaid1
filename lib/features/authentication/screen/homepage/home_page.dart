@@ -147,7 +147,7 @@ class _HomePageState extends State<HomePage> {
     EmergencyLink(
       id: 'fire-Service',
       name: 'Fire-Service',
-      icon: Icons.local_police_outlined,
+      icon: Icons.local_fire_department_outlined,
       phone: '999',
       url: 'https://www.bomba.gov.my/',
     ),

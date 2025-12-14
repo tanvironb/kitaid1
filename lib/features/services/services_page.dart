@@ -3,6 +3,8 @@ import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
@@ -16,13 +18,40 @@ class _ServicesPageState extends State<ServicesPage> {
   String _query = '';
 
   // Example service data — you’ll replace icons/images later
-  final List<_Service> _all = const [
-    _Service(id: 'jpj', name: 'JPJ', suggested: true),
-    _Service(id: 'immigration', name: 'Immigration', suggested: true),
-    _Service(id: 'jpn', name: 'JPN', suggested: true),
-    _Service(id: 'etiqa', name: 'Etiqa', suggested: false),
-    _Service(id: 'mysejahtera', name: 'MySejahtera', suggested: false),
-  ];
+ final List<_Service> _all = const [
+  _Service(
+    id: 'jpj',
+    name: 'JPJ',
+    suggested: true,
+    iconAsset: 'assets/jpj.png',
+  ),
+  _Service(
+    id: 'immigration',
+    name: 'Immigration',
+    suggested: true,
+    iconAsset: 'assets/immigration.png',
+  ),
+  _Service(
+    id: 'jpn',
+    name: 'JPN',
+    suggested: true,
+    iconAsset: 'assets/jpn.png',
+  ),
+  _Service(
+    id: 'etiqa',
+    name: 'Etiqa',
+    suggested: false,
+    iconAsset: 'assets/etiqa.png',
+  ),
+  _Service(
+    id: 'mysejahtera',
+    name: 'MySejahtera',
+    suggested: false,
+    iconAsset: 'assets/mysejahtera.png',
+  ),
+];
+
+  
 
   // ✅ Website mapping (tap service -> open url)
   static const Map<String, String> _serviceUrls = {
@@ -32,6 +61,18 @@ class _ServicesPageState extends State<ServicesPage> {
     'etiqa': 'https://www.etiqa.com.my/',
     'mysejahtera': 'https://mysejahtera.moh.gov.my/en/',
   };
+
+    // 🔵 Banner images (top slideshow)
+  final List<String> _banners = const [
+    'assets/etiqa.png',
+     'assets/immigration.png',
+    'assets/jpj.png',
+    'assets/jpn.png',
+    'assets/mysejahtera.png',
+  ];
+  late final PageController _bannerCtrl;
+  Timer? _bannerTimer;
+  int _bannerIndex = 0;
 
   Future<void> _openServiceWebsite(BuildContext context, _Service s) async {
     final url = _serviceUrls[s.id];
@@ -56,19 +97,40 @@ class _ServicesPageState extends State<ServicesPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl.addListener(() {
-      setState(() => _query = _searchCtrl.text.trim());
-    });
-  }
+ @override
+void initState() {
+  super.initState();
+
+  // 🔍 Search listener
+  _searchCtrl.addListener(() {
+    setState(() => _query = _searchCtrl.text.trim());
+  });
+
+  // 🖼️ Banner controller
+  _bannerCtrl = PageController();
+
+  // ⏱️ Auto slide banner every 4 seconds
+  _bannerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    if (!mounted || _banners.length <= 1) return;
+
+    _bannerIndex = (_bannerIndex + 1) % _banners.length;
+    _bannerCtrl.animateToPage(
+      _bannerIndex,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeInOut,
+    );
+  });
+}
+
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
+  _searchCtrl.dispose();
+  _bannerTimer?.cancel();
+  _bannerCtrl.dispose();
+  super.dispose();
+}
+
 
   // Filters by search term
   List<_Service> _filter(List<_Service> items) {
@@ -125,25 +187,33 @@ class _ServicesPageState extends State<ServicesPage> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // 🖼️ Placeholder box for slideshow / banner images
-          Container(
-            height: 160,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
-            ),
-            child: const Center(
-              child: Text(
-                'Slideshow / Promo Area\n(You can add images later)',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: mycolors.textPrimary),
+              SizedBox(
+  height: 140, // a bit smaller
+  child: ClipRRect(
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
+      color: Colors.white,
+      child: PageView.builder(
+        controller: _bannerCtrl,
+        itemCount: _banners.length,
+        onPageChanged: (i) => _bannerIndex = i,
+        itemBuilder: (context, i) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(
+              _banners[i],
+              fit: BoxFit.contain, // ✅ makes logo not huge
+              errorBuilder: (_, __, ___) => const Center(
+                child: Text('Banner image not found'),
               ),
             ),
-          ),
+          );
+        },
+      ),
+    ),
+  ),
+),
+
 
           const SizedBox(height: 20),
 
@@ -251,12 +321,16 @@ class _Service {
   final String id;
   final String name;
   final bool suggested;
+  final String? iconAsset;
+
   const _Service({
     required this.id,
     required this.name,
     required this.suggested,
+    this.iconAsset,
   });
 }
+
 
 // Horizontal chips for "Suggested"
 class _ServiceChip extends StatelessWidget {
@@ -278,11 +352,17 @@ class _ServiceChip extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const CircleAvatar(
+             CircleAvatar(
               radius: 22,
-              backgroundColor: mycolors.Primary,
-              child: Icon(Icons.public, color: Colors.white),
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: service.iconAsset != null
+                          ? Image.asset(service.iconAsset!, fit: BoxFit.contain)
+                    : const Icon(Icons.public, color: mycolors.Primary),
+              ),
             ),
+
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -321,26 +401,42 @@ class _ServiceCard extends StatelessWidget {
           border:
               Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const CircleAvatar(
-              radius: 24,
-              backgroundColor: mycolors.Primary,
-              child: Icon(Icons.public, color: Colors.white),
-            ),
-            const Spacer(),
-            Text(
-              service.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: mycolors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+       child: Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    Expanded(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: double.infinity,
+          color: mycolors.btnSecondary,
+          child: service.iconAsset != null
+              ? Image.asset(
+                  service.iconAsset!,
+                  fit: BoxFit.cover, // ✅ fills the box
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.public,
+                    color: mycolors.Primary,
+                    size: 36,
+                  ),
+                )
+              : const Icon(Icons.public, color: mycolors.Primary, size: 36),
         ),
+      ),
+    ),
+    const SizedBox(height: 10),
+    Text(
+      service.name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: mycolors.textPrimary,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  ],
+),
+
       ),
     );
   }
@@ -368,7 +464,7 @@ class _EmptyState extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(color: mycolors.textPrimary),
+              style: const TextStyle(color: Color.fromARGB(255, 10, 1, 1)),
             ),
           ),
         ],
