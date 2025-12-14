@@ -145,11 +145,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ],
                       ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.more_horiz),
-                        onPressed: () {},
-                      ),
                     ],
                   ),
                   const SizedBox(height: 22),

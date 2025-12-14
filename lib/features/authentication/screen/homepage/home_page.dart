@@ -4,9 +4,8 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// --------------------------
 /// DATA LAYERS / HOOK POINTS
-/// --------------------------
+/// 
 /// ProfileRepository is a thin interface the future Profile page can control.
 /// Replace the dummy implementation with your real one later (e.g., Firebase).
 class ProfileRepository extends ChangeNotifier {
@@ -147,7 +146,7 @@ class _HomePageState extends State<HomePage> {
     EmergencyLink(
       id: 'fire-Service',
       name: 'Fire-Service',
-      icon: Icons.local_police_outlined,
+      icon: Icons.local_fire_department_outlined,
       phone: '999',
       url: 'https://www.bomba.gov.my/',
     ),
