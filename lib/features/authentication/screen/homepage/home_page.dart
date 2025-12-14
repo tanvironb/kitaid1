@@ -4,9 +4,8 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// --------------------------
 /// DATA LAYERS / HOOK POINTS
-/// --------------------------
+/// 
 /// ProfileRepository is a thin interface the future Profile page can control.
 /// Replace the dummy implementation with your real one later (e.g., Firebase).
 class ProfileRepository extends ChangeNotifier {
