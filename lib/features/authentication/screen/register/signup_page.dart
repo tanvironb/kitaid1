@@ -1,5 +1,8 @@
 // lib/features/auth/signup/signup_page.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
@@ -18,7 +21,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _name = TextEditingController();
   final _ic = TextEditingController();
   final _email = TextEditingController();
-  final _phone = TextEditingController();
+  final _phone = TextEditingController(); // local number only
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
@@ -43,15 +46,15 @@ class _SignUpPageState extends State<SignUpPage> {
   String? _emailV(String? v) {
     if (_req(v) != null) return 'Required';
     final e = v!.trim();
-    final ok =
-        RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
+    final ok = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(e);
     return ok ? null : 'Invalid email';
   }
 
+  /// Malaysia phone validation (without +60)
   String? _phoneV(String? v) {
     if (_req(v) != null) return 'Required';
     final p = v!.replaceAll(RegExp(r'\D'), '');
-    if (p.length < 9 || p.length > 12) return 'Invalid phone number';
+    if (p.length < 9 || p.length > 10) return 'Invalid Malaysian phone number';
     return null;
   }
 
@@ -67,32 +70,86 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
+  /// Normalize to +60XXXXXXXXX
+  String _formatMalaysiaPhone(String input) {
+    final digits = input.replaceAll(RegExp(r'\D'), '');
+    return '+60$digits';
+  }
+
+  /// Convert IC to an "email" for FirebaseAuth login
+  /// Example: 050101101010 -> 050101101010@kitaid.my
+  String _icToAuthEmail(String ic) {
+    final digits = ic.replaceAll(RegExp(r'\D'), '');
+    return '$digits@kitaid.my';
+  }
+
   Future<void> _onNext() async {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
     setState(() => _loading = true);
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      final phoneFull = _formatMalaysiaPhone(_phone.text);
+      final icRaw = _ic.text.trim();
+      final authEmail = _icToAuthEmail(icRaw);
 
-    if (!mounted) return;
-    setState(() => _loading = false);
+      // 1) Create account in Firebase Auth using IC-based email
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: authEmail,
+        password: _password.text,
+      );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SignUpOtpPage(
-          phoneNumber: _phone.text.trim(),
-          signupPayload: {
-            'name': _name.text.trim(),
-            'ic': _ic.text.trim(),
-            'email': _email.text.trim(),
-            'phone': _phone.text.trim(),
-            'password': _password.text,
-          },
+      final uid = cred.user!.uid;
+
+      // 2) Save profile in Firestore (store real email + IC + phone)
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set({
+        'Email': _email.text.trim(),     // real email (for contact)
+        'AuthEmail': authEmail,          // optional, for debugging/login mapping
+        'IC No': icRaw,
+        'Name': _name.text.trim(),
+        'Phone No': phoneFull,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      // 3) Go to OTP page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SignUpOtpPage(
+            phoneNumber: phoneFull,
+            signupPayload: {
+              'uid': uid,
+              'name': _name.text.trim(),
+              'ic': icRaw,
+              'email': _email.text.trim(),
+              'phone': phoneFull,
+            },
+          ),
         ),
-      ),
-    );
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+
+      final msg = switch (e.code) {
+        'email-already-in-use' => 'This IC is already registered.',
+        'invalid-email' => 'Invalid IC format.',
+        'weak-password' => 'Password is too weak.',
+        _ => e.message ?? 'Signup failed. Try again.',
+      };
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
@@ -101,8 +158,6 @@ class _SignUpPageState extends State<SignUpPage> {
 
     return Scaffold(
       backgroundColor: mycolors.Primary,
-
-      // ✅ BACK BUTTON ADDED HERE
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -111,7 +166,6 @@ class _SignUpPageState extends State<SignUpPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -129,28 +183,11 @@ class _SignUpPageState extends State<SignUpPage> {
                         ?.copyWith(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
-                  Column(
-                    children: const [
-                      Text(
-                        'Create Your Account',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: mysizes.fontSm,
-                        ),
-                      ),
-                      SizedBox(height: mysizes.sm),
-                    ],
-                  ),
                   const SizedBox(height: 80),
 
-                  // --- FORM FIELDS (unchanged) ---
                   TextFormField(
                     controller: _name,
                     validator: _req,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: const InputDecoration(
                       labelText: mytitle.s_name,
                       filled: true,
@@ -162,10 +199,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _ic,
                     validator: _req,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: const InputDecoration(
                       labelText: mytitle.s_icno,
                       filled: true,
@@ -177,10 +210,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _email,
                     validator: _emailV,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: const InputDecoration(
                       labelText: mytitle.s_email,
                       filled: true,
@@ -193,14 +222,11 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _phone,
                     validator: _phoneV,
                     keyboardType: TextInputType.phone,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: const InputDecoration(
                       labelText: mytitle.phoneno,
                       filled: true,
                       fillColor: Colors.white,
+                      prefixText: '+60 ',
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -209,20 +235,13 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _password,
                     obscureText: _obscurePw,
                     validator: _pwV,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: InputDecoration(
                       labelText: mytitle.s_password,
                       filled: true,
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePw
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                          color: mycolors.textPrimary,
+                          _obscurePw ? Icons.visibility_off : Icons.visibility,
                         ),
                         onPressed: () =>
                             setState(() => _obscurePw = !_obscurePw),
@@ -235,10 +254,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _confirm,
                     obscureText: _obscureConfirm,
                     validator: _confirmV,
-                    style: const TextStyle(
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                    ),
                     decoration: InputDecoration(
                       labelText: mytitle.retypepassword,
                       filled: true,
@@ -248,10 +263,9 @@ class _SignUpPageState extends State<SignUpPage> {
                           _obscureConfirm
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: mycolors.textPrimary,
                         ),
-                        onPressed: () => setState(
-                            () => _obscureConfirm = !_obscureConfirm),
+                        onPressed: () =>
+                            setState(() => _obscureConfirm = !_obscureConfirm),
                       ),
                     ),
                   ),
@@ -263,25 +277,8 @@ class _SignUpPageState extends State<SignUpPage> {
                       width: w * 0.3,
                       child: ElevatedButton(
                         onPressed: _loading ? null : _onNext,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: mycolors.bgPrimary,
-                          foregroundColor: mycolors.textPrimary,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: mysizes.btnheight,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(
-                                mysizes.borderRadiusLg),
-                          ),
-                          elevation: 0,
-                        ),
                         child: _loading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2),
-                              )
+                            ? const CircularProgressIndicator(strokeWidth: 2)
                             : const Text('Next'),
                       ),
                     ),

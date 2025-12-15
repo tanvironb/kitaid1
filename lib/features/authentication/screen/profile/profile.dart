@@ -1,4 +1,8 @@
+// lib/features/authentication/screen/profile/profile_page.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/features/authentication/screen/profile/card_detail_page.dart';
 import 'package:kitaid1/features/authentication/screen/profile/doc_detail_page.dart';
@@ -12,26 +16,14 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _UserProfile {
-  final String name;
-  final String id;
-  final String country;
-  final String dateOfBirth;
-
-  const _UserProfile({
-    required this.name,
-    required this.id,
-    required this.country,
-    required this.dateOfBirth,
-  });
-}
-
 class ProfileCardItem {
+  final String id;
   final String title;
   final String idLabel;
   final String? imageAsset;
 
   const ProfileCardItem({
+    required this.id,
     required this.title,
     required this.idLabel,
     this.imageAsset,
@@ -39,10 +31,12 @@ class ProfileCardItem {
 }
 
 class ProfileDocItem {
+  final String id;
   final String title;
   final String description;
 
   const ProfileDocItem({
+    required this.id,
     required this.title,
     required this.description,
   });
@@ -51,40 +45,12 @@ class ProfileDocItem {
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedTab = 0;
 
-  final _UserProfile _user = const _UserProfile(
-    name: 'Tanvir',
-    id: 'A02581787',
-    country: 'Bangladesh',
-    dateOfBirth: '27/10/2001',
-  );
-
-  final List<ProfileCardItem> _cards = const [
-    ProfileCardItem(
-      title: 'MyKad',
-      idLabel: 'ID: 123456-78-9012',
-      imageAsset: null, // e.g. 'assets/cards/mykad.png'
-    ),
-    ProfileCardItem(
-      title: 'Driving License',
-      idLabel: 'ID: D-9087654321',
-      imageAsset: null,
-    ),
-  ];
-
-  final List<ProfileDocItem> _docs = const [
-    ProfileDocItem(
-      title: 'Passport Scan',
-      description: 'Uploaded on 01/12/2025',
-    ),
-    ProfileDocItem(
-      title: 'Student ID PDF',
-      description: 'Uploaded on 15/11/2025',
-    ),
-  ];
+  User? get _user => FirebaseAuth.instance.currentUser;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final uid = _user?.uid;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -107,162 +73,188 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(mysizes.defaultspace),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ===== HEADER =====
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const CircleAvatar(
-                        radius: 28,
-                        backgroundImage: AssetImage(
-                          'assets/images/profile_placeholder.png',
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _user.name,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: mycolors.Primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'ID: ${_user.id}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: mycolors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Country',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: mycolors.textPrimary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            _user.country,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: mycolors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 40),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Date of Birth',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: mycolors.textPrimary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            _user.dateOfBirth,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 11,
-                              color: mycolors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: mysizes.spacebtwsections),
-
-              // ===== TABS =====
-              Row(
-                children: [
-                  Expanded(
-                    child: _SegmentTab(
-                      label: 'Cards',
-                      selected: _selectedTab == 0,
-                      onTap: () => setState(() => _selectedTab = 0),
+        child: uid == null
+            ? Padding(
+                padding: const EdgeInsets.all(mysizes.defaultspace),
+                child: Center(
+                  child: Text(
+                    'Please log in to view your profile.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: mycolors.textPrimary,
                     ),
                   ),
-                  const SizedBox(width: mysizes.spacebtwitems),
-                  Expanded(
-                    child: _SegmentTab(
-                      label: 'Docs',
-                      selected: _selectedTab == 1,
-                      onTap: () => setState(() => _selectedTab = 1),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: mysizes.spacebtwsections),
-
-              // ===== CONTENT =====
-              if (_selectedTab == 0)
-                _CardsSection(
-                  cards: _cards,
-                  onCardTap: (card) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CardDetailPage(
-                          cardTitle: card.title,
-                          cardIdLabel: card.idLabel,
-                          imageAsset: card.imageAsset,
-                          ownerName: _user.name,
-                          ownerDob: _user.dateOfBirth,
-                          ownerCountry: _user.country,
-                        ),
-                      ),
-                    );
-                  },
-                )
-              else
-                _DocsSection(
-                  docs: _docs,
-                  onDocTap: (doc) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DocDetailPage(
-                          docTitle: doc.title,
-                          docDescription: doc.description,
-                          ownerName: _user.name,
-                          ownerDob: _user.dateOfBirth,
-                          ownerCountry: _user.country,
-                          previewAsset: null, // later: set an image preview asset
-                        ),
-                      ),
-                    );
-                  },
                 ),
-            ],
-          ),
-        ),
+              )
+            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(uid)
+                    .snapshots(),
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final data = snap.data?.data() ?? {};
+
+                  final name = (data['Name'] ?? '').toString().trim();
+                  final ic = (data['IC No'] ?? '').toString().trim();
+                  final phone = (data['Phone No'] ?? '').toString().trim();
+
+                  // Optional fields if you add later in Firestore:
+                  final country = (data['Country'] ?? '').toString().trim();
+                  final dob = (data['DOB'] ?? '').toString().trim();
+
+                  final displayName = name.isNotEmpty ? name : 'User';
+                  final displayId = ic.isNotEmpty ? ic : uid;
+
+                  // show small text if not yet stored
+                  final displayCountry = country.isNotEmpty ? country : '-';
+                  final displayDob = dob.isNotEmpty ? dob : '-';
+
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(mysizes.defaultspace),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ===== HEADER =====
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const CircleAvatar(
+                                  radius: 28,
+                                  backgroundImage: AssetImage(
+                                    'assets/images/profile_placeholder.png',
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: mycolors.Primary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'IC: $displayId',
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: mycolors.textPrimary,
+                                      ),
+                                    ),
+                                    if (phone.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Phone: $phone',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: mycolors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 22),
+                            Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Country',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 11,
+                                        color: mycolors.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      displayCountry,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 11,
+                                        color: mycolors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 40),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Date of Birth',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 11,
+                                        color: mycolors.textPrimary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      displayDob,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        fontSize: 11,
+                                        color: mycolors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: mysizes.spacebtwsections),
+
+                        // ===== TABS =====
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SegmentTab(
+                                label: 'Cards',
+                                selected: _selectedTab == 0,
+                                onTap: () => setState(() => _selectedTab = 0),
+                              ),
+                            ),
+                            const SizedBox(width: mysizes.spacebtwitems),
+                            Expanded(
+                              child: _SegmentTab(
+                                label: 'Docs',
+                                selected: _selectedTab == 1,
+                                onTap: () => setState(() => _selectedTab = 1),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: mysizes.spacebtwsections),
+
+                        // ===== CONTENT =====
+                        if (_selectedTab == 0)
+                          _CardsFromFirestore(
+                            uid: uid,
+                            ownerName: displayName,
+                            ownerDob: displayDob,
+                            ownerCountry: displayCountry,
+                          )
+                        else
+                          _DocsFromFirestore(
+                            uid: uid,
+                            ownerName: displayName,
+                            ownerDob: displayDob,
+                            ownerCountry: displayCountry,
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
 
       // ===== OFFICIAL KITAID NAVBAR =====
@@ -331,45 +323,94 @@ class _SegmentTab extends StatelessWidget {
   }
 }
 
-class _CardsSection extends StatelessWidget {
-  const _CardsSection({
-    required this.cards,
-    required this.onCardTap,
+/// ---------------------------
+/// CARDS FROM FIRESTORE
+/// Path: Users/{uid}/cards
+/// Fields expected:
+/// - title (String)
+/// - idLabel (String)
+/// ---------------------------
+class _CardsFromFirestore extends StatelessWidget {
+  const _CardsFromFirestore({
+    required this.uid,
+    required this.ownerName,
+    required this.ownerDob,
+    required this.ownerCountry,
   });
 
-  final List<ProfileCardItem> cards;
-  final void Function(ProfileCardItem card) onCardTap;
+  final String uid;
+  final String ownerName;
+  final String ownerDob;
+  final String ownerCountry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (cards.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
-          child: Text(
-            'No cards yet.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: mycolors.textPrimary,
-            ),
-          ),
-        ),
-      );
-    }
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .collection('cards')
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final card in cards) ...[
-          _CardTile(
-            card: card,
-            theme: theme,
-            onTap: () => onCardTap(card),
-          ),
-          const SizedBox(height: mysizes.spacebtwitems),
-        ],
-      ],
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              child: Text(
+                'No cards yet.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: mycolors.textPrimary,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final cards = docs.map((d) {
+          final data = d.data();
+          return ProfileCardItem(
+            id: d.id,
+            title: (data['title'] ?? d.id).toString(),
+            idLabel: (data['idLabel'] ?? '').toString(),
+            imageAsset: null,
+          );
+        }).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final card in cards) ...[
+              _CardTile(
+                card: card,
+                theme: theme,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CardDetailPage(
+                        cardTitle: card.title,
+                        cardIdLabel: card.idLabel,
+                        imageAsset: card.imageAsset,
+                        ownerName: ownerName,
+                        ownerDob: ownerDob,
+                        ownerCountry: ownerCountry,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: mysizes.spacebtwitems),
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -443,62 +484,109 @@ class _CardTile extends StatelessWidget {
   }
 }
 
-// ✅ UPDATED DOCS SECTION (NOW TAPPABLE)
-class _DocsSection extends StatelessWidget {
-  const _DocsSection({
-    required this.docs,
-    required this.onDocTap,
+/// ---------------------------
+/// DOCS FROM FIRESTORE
+/// Path: Users/{uid}/docs
+/// Fields expected:
+/// - title (String)
+/// - description (String)
+/// ---------------------------
+class _DocsFromFirestore extends StatelessWidget {
+  const _DocsFromFirestore({
+    required this.uid,
+    required this.ownerName,
+    required this.ownerDob,
+    required this.ownerCountry,
   });
 
-  final List<ProfileDocItem> docs;
-  final void Function(ProfileDocItem doc) onDocTap;
+  final String uid;
+  final String ownerName;
+  final String ownerDob;
+  final String ownerCountry;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (docs.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
-          child: Text(
-            'No documents yet.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: mycolors.textPrimary,
-            ),
-          ),
-        ),
-      );
-    }
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .collection('docs')
+          .snapshots(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return Column(
-      children: [
-        for (final doc in docs) ...[
-          Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: Text(
-                doc.title,
+        final docs = snap.data?.docs ?? [];
+        if (docs.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              child: Text(
+                'No documents yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
-              subtitle: Text(
-                doc.description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: mycolors.textPrimary,
-                ),
-              ),
-              onTap: () => onDocTap(doc), // ✅ NOW OPENS DETAILS
             ),
-          ),
-          const SizedBox(height: mysizes.spacebtwitems),
-        ],
-      ],
+          );
+        }
+
+        final list = docs.map((d) {
+          final data = d.data();
+          return ProfileDocItem(
+            id: d.id,
+            title: (data['title'] ?? d.id).toString(),
+            description: (data['description'] ?? '').toString(),
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            for (final doc in list) ...[
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(
+                    doc.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: mycolors.textPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    doc.description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: mycolors.textPrimary,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DocDetailPage(
+                          docTitle: doc.title,
+                          docDescription: doc.description,
+                          ownerName: ownerName,
+                          ownerDob: ownerDob,
+                          ownerCountry: ownerCountry,
+                          previewAsset: null,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: mysizes.spacebtwitems),
+            ],
+          ],
+        );
+      },
     );
   }
 }

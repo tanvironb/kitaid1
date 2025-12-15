@@ -1,25 +1,26 @@
+// lib/features/authentication/screen/homepage/home_page.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// DATA LAYERS / HOOK POINTS
-/// 
-/// ProfileRepository is a thin interface the future Profile page can control.
-/// Replace the dummy implementation with your real one later (e.g., Firebase).
 class ProfileRepository extends ChangeNotifier {
   static final ProfileRepository instance = ProfileRepository._();
   ProfileRepository._();
 
-  // Nullable until the user logs in & profile loads.
   UserProfile? _profile;
   List<UserCard> _cards = const [];
 
   UserProfile? get profile => _profile;
   List<UserCard> get cards => _cards;
 
-  // Call these from your real profile flow once ready:
   void setProfile(UserProfile? p) {
     _profile = p;
     notifyListeners();
@@ -33,16 +34,16 @@ class ProfileRepository extends ChangeNotifier {
 
 class UserProfile {
   final String uid;
-  final String? displayName; // null until available
-  final String? photoUrl; // null = show default avatar
+  final String? displayName;
+  final String? photoUrl;
   const UserProfile({required this.uid, this.displayName, this.photoUrl});
 }
 
 class UserCard {
   final String id;
-  final String title; // e.g., "MyKad", "Passport", "Driver's License"
-  final IconData? icon; // fallback icon until you plug logos
-  final String? assetLogo; // when you have a logo asset
+  final String title;
+  final IconData? icon;
+  final String? assetLogo;
   const UserCard({
     required this.id,
     required this.title,
@@ -51,14 +52,10 @@ class UserCard {
   });
 }
 
-/// RecentServicesStore keeps lightweight “recently browsed” services.
-/// You’ll call RecentServicesStore.recordBrowse(...) from your Services pages.
-/// Here we keep it in-memory for simplicity; swap to SharedPreferences or Firestore later.
 class RecentServicesStore extends ChangeNotifier {
   static final RecentServicesStore instance = RecentServicesStore._();
   RecentServicesStore._();
 
-  final int _limit = 10;
   final List<ServiceRef> _recent = [];
 
   List<ServiceRef> get recent => List.unmodifiable(_recent);
@@ -66,23 +63,35 @@ class RecentServicesStore extends ChangeNotifier {
   void recordBrowse(ServiceRef service) {
     _recent.removeWhere((s) => s.id == service.id);
     _recent.insert(0, service);
-    if (_recent.length > _limit) _recent.removeLast();
+    if (_recent.length > 10) _recent.removeLast();
+    notifyListeners();
+  }
+
+  void setRecents(List<ServiceRef> list) {
+    _recent
+      ..clear()
+      ..addAll(list);
+    notifyListeners();
+  }
+
+  void clear() {
+    _recent.clear();
     notifyListeners();
   }
 }
 
 class ServiceRef {
-  final String id; // stable id, e.g., "jpj", "immigration"
-  final String name; // display name
-  const ServiceRef(this.id, this.name);
+  final String id;
+  final String name;
+  final String? logoAsset; // ✅ logo for recent chip
+  const ServiceRef(this.id, this.name, {this.logoAsset});
 }
 
-/// Emergency link model
 class EmergencyLink {
   final String id;
   final String name;
-  final String phone; // non-null
-  final String? url; // optional
+  final String phone;
+  final String? url;
   final String? asset;
   final IconData? icon;
 
@@ -107,7 +116,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Example emergency shortcuts — replace URLs/logos later.
+  StreamSubscription<User?>? _authSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cardsSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recentSub;
+
+  // ✅ fallback mapping (if Firestore doesn't store logoAsset yet)
+  static const Map<String, String> _serviceLogos = {
+    'jpj': 'assets/jpj.png',
+    'immigration': 'assets/immigration.png',
+    'jpn': 'assets/jpn.png',
+    'etiqa': 'assets/etiqa.png',
+    'mysejahtera': 'assets/mysejahtera.png',
+  };
+
   final List<EmergencyLink> _emergency = const [
     EmergencyLink(
       id: 'jpj',
@@ -153,6 +175,97 @@ class _HomePageState extends State<HomePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _listenAuthAndProfile();
+  }
+
+  void _listenAuthAndProfile() {
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      _userDocSub?.cancel();
+      _cardsSub?.cancel();
+      _recentSub?.cancel();
+
+      if (user == null) {
+        ProfileRepository.instance.setProfile(null);
+        ProfileRepository.instance.setCards(const []);
+        RecentServicesStore.instance.clear();
+        return;
+      }
+
+      // Users/{uid}
+      _userDocSub = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .snapshots()
+          .listen((doc) {
+        final data = doc.data();
+        final name = (data?['Name'] ?? '').toString().trim();
+        final photoUrl = (data?['photoUrl'] ?? '').toString().trim();
+
+        ProfileRepository.instance.setProfile(
+          UserProfile(
+            uid: user.uid,
+            displayName: name.isNotEmpty ? name : null,
+            photoUrl: photoUrl.isNotEmpty ? photoUrl : null,
+          ),
+        );
+      });
+
+      // Users/{uid}/cards
+      _cardsSub = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .collection('cards')
+          .snapshots()
+          .listen((snap) {
+        final list = snap.docs.map((d) {
+          final data = d.data();
+          final title = (data['title'] ?? d.id).toString();
+          return UserCard(id: d.id, title: title);
+        }).toList();
+
+        ProfileRepository.instance.setCards(list);
+      });
+
+      // ✅ Users/{uid}/recentServices
+      _recentSub = FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .collection('recentServices')
+          .orderBy('lastOpenedAt', descending: true)
+          .limit(10)
+          .snapshots()
+          .listen((snap) {
+        final list = snap.docs.map((d) {
+          final data = d.data();
+          final name = (data['name'] ?? d.id).toString();
+
+          // ✅ read logoAsset if you store it, fallback to local mapping
+          final logo = (data['logoAsset'] ?? _serviceLogos[d.id] ?? '').toString();
+
+          return ServiceRef(
+            d.id,
+            name,
+            logoAsset: logo.isNotEmpty ? logo : null,
+          );
+        }).toList();
+
+        RecentServicesStore.instance.setRecents(list);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    _userDocSub?.cancel();
+    _cardsSub?.cancel();
+    _recentSub?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
@@ -160,7 +273,6 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: SafeArea(
         child: AnimatedBuilder(
-          // Rebuild when profile or recents change.
           animation: Listenable.merge([
             ProfileRepository.instance,
             RecentServicesStore.instance,
@@ -178,16 +290,11 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // -----------------------
-                      // HEADER: Avatar + Name
-                      // -----------------------
+                      // HEADER
                       Row(
                         children: [
-                          // Avatar → Profile page
                           GestureDetector(
-                            onTap: () {
-                              Navigator.pushNamed(context, '/profile');
-                            },
+                            onTap: () => Navigator.pushNamed(context, '/profile'),
                             child: CircleAvatar(
                               radius: 28,
                               backgroundColor: scheme.secondaryContainer,
@@ -206,18 +313,13 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hi ${profile?.displayName?.trim().isNotEmpty == true ? profile!.displayName!.trim() : "there"}',
-                                  style: text.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: mycolors.Primary,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
+                            child: Text(
+                              'Hi ${profile?.displayName?.trim().isNotEmpty == true ? profile!.displayName!.trim() : "there"}',
+                              style: text.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: mycolors.Primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -225,10 +327,7 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 20),
 
-                      // -----------------------
-                      // MY CARDS (from Profile)
-                      // + See all → Profile page
-                      // -----------------------
+                      // MY CARDS
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -240,9 +339,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/profile');
-                            },
+                            onPressed: () => Navigator.pushNamed(context, '/profile'),
                             child: const Text('See all'),
                           ),
                         ],
@@ -274,10 +371,7 @@ class _HomePageState extends State<HomePage> {
                               title: c.title,
                               assetLogo: c.assetLogo,
                               icon: c.icon ?? Icons.credit_card,
-                              onTap: () {
-                                // go to profile where user can see all cards
-                                Navigator.pushNamed(context, '/profile');
-                              },
+                              onTap: () => Navigator.pushNamed(context, '/profile'),
                             );
                           },
                         ),
@@ -285,10 +379,7 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 24),
 
-                      // -----------------------
-                      // RECENT SERVICES
-                      // See all → Services page
-                      // -----------------------
+                      // RECENT SERVICES ✅ with logo
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -300,9 +391,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/services');
-                            },
+                            onPressed: () => Navigator.pushNamed(context, '/services'),
                             child: const Text('See all'),
                           ),
                         ],
@@ -320,17 +409,13 @@ class _HomePageState extends State<HomePage> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: recents.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, i) {
                               final s = recents[i];
-                              return _ChipButton(
+                              return _RecentChip(
                                 label: s.name,
-                                onTap: () {
-                                  // Optional: route to services page for now
-                                  Navigator.pushNamed(context, '/services');
-                                  // Later: pass s.id to open exact service page
-                                },
+                                logoAsset: s.logoAsset,
+                                onTap: () => Navigator.pushNamed(context, '/services'),
                               );
                             },
                           ),
@@ -338,9 +423,7 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 24),
 
-                      // -----------------------
-                      // EMERGENCY (bottomsheet)
-                      // -----------------------
+                      // EMERGENCY
                       Text(
                         'Emergency',
                         style: text.titleMedium?.copyWith(
@@ -385,33 +468,26 @@ class _HomePageState extends State<HomePage> {
 
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 0, // HOME
+        currentIndex: 0,
         onTap: (index) {
-          if (index == 0) return; // already on this page
+          if (index == 0) return;
 
           switch (index) {
-            case 0: // HOME
+            case 0:
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
-
-            case 1: // CHATBOT
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/chatbot', (_) => false);
+            case 1:
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
-
-            case 2: // SERVICES
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/services', (_) => false);
+            case 2:
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
-
-            case 3: // NOTIFICATIONS
+            case 3:
               Navigator.pushNamedAndRemoveUntil(
                   context, '/notifications', (_) => false);
               break;
-
-            case 4: // PROFILE
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/profile', (_) => false);
+            case 4:
+              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
         },
@@ -423,51 +499,17 @@ class _HomePageState extends State<HomePage> {
 /// --------------------------
 /// WIDGETS
 /// --------------------------
-class _RoundedSquareButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _RoundedSquareButton(
-      {required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final text = Theme.of(context).textTheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 24, color: scheme.onPrimaryContainer),
-            Text(label,
-                style: text.labelSmall?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                )),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _CardPill extends StatelessWidget {
   final String title;
   final String? assetLogo;
   final IconData icon;
   final VoidCallback onTap;
-  const _CardPill(
-      {required this.title,
-      required this.onTap,
-      this.assetLogo,
-      required this.icon});
+  const _CardPill({
+    required this.title,
+    required this.onTap,
+    this.assetLogo,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -527,14 +569,22 @@ class _CardPill extends StatelessWidget {
   }
 }
 
-class _ChipButton extends StatelessWidget {
+// ✅ NEW: Recent chip with small logo
+class _RecentChip extends StatelessWidget {
   final String label;
+  final String? logoAsset;
   final VoidCallback onTap;
-  const _ChipButton({required this.label, required this.onTap});
+
+  const _RecentChip({
+    required this.label,
+    required this.onTap,
+    this.logoAsset,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
     return Material(
       color: scheme.surfaceVariant,
       borderRadius: BorderRadius.circular(999),
@@ -542,8 +592,40 @@ class _ChipButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: (logoAsset != null && logoAsset!.isNotEmpty)
+                    ? Image.asset(
+                        logoAsset!,
+                        width: 16,
+                        height: 16,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.public,
+                          size: 14,
+                          color: mycolors.Primary,
+                        ),
+                      )
+                    : Icon(
+                        Icons.public,
+                        size: 14,
+                        color: mycolors.Primary,
+                      ),
+              ),
+              const SizedBox(width: 8),
+              Text(label, style: Theme.of(context).textTheme.labelLarge),
+            ],
+          ),
         ),
       ),
     );
@@ -683,10 +765,7 @@ class _EmergencyBottomSheet extends StatelessWidget {
             topLeft: Radius.circular(16),
             topRight: Radius.circular(16),
           ),
-          border: Border.all(
-            color: mycolors.Primary,
-            width: 1.5,
-          ),
+          border: Border.all(color: mycolors.Primary, width: 1.5),
           boxShadow: [
             BoxShadow(
               blurRadius: 8,
@@ -699,7 +778,6 @@ class _EmergencyBottomSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // drag handle
             Container(
               width: 40,
               height: 3,
@@ -709,8 +787,6 @@ class _EmergencyBottomSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
-
-            // header row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -733,50 +809,21 @@ class _EmergencyBottomSheet extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 16),
             Divider(height: 1, color: theme.dividerColor),
-
-            // 📞 phone tile
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                Icons.phone_outlined,
-                size: 22,
-                color: theme.iconTheme.color,
-              ),
-              title: Text(
-                phone,
-                style: textTheme.bodyMedium?.copyWith(
-                  color: mycolors.textPrimary,
-                ),
-              ),
+              leading: Icon(Icons.phone_outlined, size: 22, color: theme.iconTheme.color),
+              title: Text(phone, style: textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
               onTap: () => _launchPhone(phone),
             ),
-
             if (url != null && url!.isNotEmpty) ...[
               Divider(height: 1, color: theme.dividerColor),
-
-              // 🌐 website tile
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  Icons.public_outlined,
-                  size: 22,
-                  color: theme.iconTheme.color,
-                ),
-                title: Text(
-                  'Visit website',
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: mycolors.textPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  url!,
-                  style: textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                leading: Icon(Icons.public_outlined, size: 22, color: theme.iconTheme.color),
+                title: Text('Visit website', style: textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
+                subtitle: Text(url!, style: textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                 onTap: () => _launchUrl(url!),
               ),
             ],

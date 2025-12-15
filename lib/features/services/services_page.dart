@@ -5,6 +5,11 @@ import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// ✅ to update recents instantly on Home
+import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 
 class ServicesPage extends StatefulWidget {
   const ServicesPage({super.key});
@@ -17,43 +22,14 @@ class _ServicesPageState extends State<ServicesPage> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
 
-  // Example service data — you’ll replace icons/images later
- final List<_Service> _all = const [
-  _Service(
-    id: 'jpj',
-    name: 'JPJ',
-    suggested: true,
-    iconAsset: 'assets/jpj.png',
-  ),
-  _Service(
-    id: 'immigration',
-    name: 'Immigration',
-    suggested: true,
-    iconAsset: 'assets/immigration.png',
-  ),
-  _Service(
-    id: 'jpn',
-    name: 'JPN',
-    suggested: true,
-    iconAsset: 'assets/jpn.png',
-  ),
-  _Service(
-    id: 'etiqa',
-    name: 'Etiqa',
-    suggested: false,
-    iconAsset: 'assets/etiqa.png',
-  ),
-  _Service(
-    id: 'mysejahtera',
-    name: 'MySejahtera',
-    suggested: false,
-    iconAsset: 'assets/mysejahtera.png',
-  ),
-];
+  final List<_Service> _all = const [
+    _Service(id: 'jpj', name: 'JPJ', suggested: true, iconAsset: 'assets/jpj.png'),
+    _Service(id: 'immigration', name: 'Immigration', suggested: true, iconAsset: 'assets/immigration.png'),
+    _Service(id: 'jpn', name: 'JPN', suggested: true, iconAsset: 'assets/jpn.png'),
+    _Service(id: 'etiqa', name: 'Etiqa', suggested: false, iconAsset: 'assets/etiqa.png'),
+    _Service(id: 'mysejahtera', name: 'MySejahtera', suggested: false, iconAsset: 'assets/mysejahtera.png'),
+  ];
 
-  
-
-  // ✅ Website mapping (tap service -> open url)
   static const Map<String, String> _serviceUrls = {
     'jpj': 'https://www.jpj.gov.my/',
     'immigration': 'https://www.imi.gov.my/',
@@ -62,19 +38,86 @@ class _ServicesPageState extends State<ServicesPage> {
     'mysejahtera': 'https://mysejahtera.moh.gov.my/en/',
   };
 
-    // 🔵 Banner images (top slideshow)
   final List<String> _banners = const [
     'assets/etiqa.png',
-     'assets/immigration.png',
+    'assets/immigration.png',
     'assets/jpj.png',
     'assets/jpn.png',
     'assets/mysejahtera.png',
   ];
+
   late final PageController _bannerCtrl;
   Timer? _bannerTimer;
   int _bannerIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+
+    _searchCtrl.addListener(() {
+      setState(() => _query = _searchCtrl.text.trim());
+    });
+
+    _bannerCtrl = PageController();
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || _banners.length <= 1) return;
+      _bannerIndex = (_bannerIndex + 1) % _banners.length;
+      _bannerCtrl.animateToPage(
+        _bannerIndex,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _bannerTimer?.cancel();
+    _bannerCtrl.dispose();
+    super.dispose();
+  }
+
+  List<_Service> _filter(List<_Service> items) {
+    if (_query.isEmpty) return items;
+    final q = _query.toLowerCase();
+    return items.where((s) => s.name.toLowerCase().contains(q)).toList();
+  }
+
+    // ✅ Save recent service to Firestore (persistent) + update local store (instant)
+    Future<void> _recordRecentService(_Service s) async {
+      // 1) Update UI instantly (Home recents updates immediately if listening)
+      RecentServicesStore.instance.recordBrowse(
+        ServiceRef(s.id, s.name, logoAsset: s.iconAsset),
+      );
+
+      // 2) Persist only if logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .collection('recentServices')
+          .doc(s.id)
+          .set({
+        'name': s.name,
+        'url': _serviceUrls[s.id] ?? '',
+        'logoAsset': s.iconAsset ?? '', // ✅ IMPORTANT for homepage logo chip
+        'lastOpenedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+
+
   Future<void> _openServiceWebsite(BuildContext context, _Service s) async {
+    // ✅ 1) Save to recents (persistent + instant)
+    try {
+      await _recordRecentService(s);
+    } catch (_) {
+      // don’t block website opening if saving fails
+    }
+
+    // ✅ 2) Open website
     final url = _serviceUrls[s.id];
     if (url == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -84,59 +127,13 @@ class _ServicesPageState extends State<ServicesPage> {
     }
 
     final uri = Uri.parse(url);
-
-    final ok = await launchUrl(
-      uri,
-      mode: LaunchMode.externalApplication, // opens browser directly
-    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
 
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not open the website')),
       );
     }
-  }
-
- @override
-void initState() {
-  super.initState();
-
-  // 🔍 Search listener
-  _searchCtrl.addListener(() {
-    setState(() => _query = _searchCtrl.text.trim());
-  });
-
-  // 🖼️ Banner controller
-  _bannerCtrl = PageController();
-
-  // ⏱️ Auto slide banner every 4 seconds
-  _bannerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-    if (!mounted || _banners.length <= 1) return;
-
-    _bannerIndex = (_bannerIndex + 1) % _banners.length;
-    _bannerCtrl.animateToPage(
-      _bannerIndex,
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeInOut,
-    );
-  });
-}
-
-
-  @override
-  void dispose() {
-  _searchCtrl.dispose();
-  _bannerTimer?.cancel();
-  _bannerCtrl.dispose();
-  super.dispose();
-}
-
-
-  // Filters by search term
-  List<_Service> _filter(List<_Service> items) {
-    if (_query.isEmpty) return items;
-    final q = _query.toLowerCase();
-    return items.where((s) => s.name.toLowerCase().contains(q)).toList();
   }
 
   @override
@@ -147,23 +144,16 @@ void initState() {
 
     return Scaffold(
       backgroundColor: mycolors.bgPrimary,
-
-      // ===== APP BAR (same style as Settings header) =====
       appBar: AppBar(
         backgroundColor: mycolors.Primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Services',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
+        title: const Text('Services', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
-
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          // 🔍 Search field
           TextField(
             controller: _searchCtrl,
             style: const TextStyle(color: mycolors.textPrimary),
@@ -173,12 +163,10 @@ void initState() {
               filled: true,
               fillColor: Colors.white,
               hintStyle: const TextStyle(color: mycolors.textPrimary),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(
-                    color: mycolors.borderprimary, width: 1.5),
+                borderSide: const BorderSide(color: mycolors.borderprimary, width: 1.5),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(24),
@@ -187,37 +175,35 @@ void initState() {
             ),
           ),
 
-              SizedBox(
-  height: 140, // a bit smaller
-  child: ClipRRect(
-    borderRadius: BorderRadius.circular(16),
-    child: Container(
-      color: Colors.white,
-      child: PageView.builder(
-        controller: _bannerCtrl,
-        itemCount: _banners.length,
-        onPageChanged: (i) => _bannerIndex = i,
-        itemBuilder: (context, i) {
-          return Padding(
-            padding: const EdgeInsets.all(12),
-            child: Image.asset(
-              _banners[i],
-              fit: BoxFit.contain, // ✅ makes logo not huge
-              errorBuilder: (_, __, ___) => const Center(
-                child: Text('Banner image not found'),
+          const SizedBox(height: 12),
+
+          SizedBox(
+            height: 140,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                color: Colors.white,
+                child: PageView.builder(
+                  controller: _bannerCtrl,
+                  itemCount: _banners.length,
+                  onPageChanged: (i) => _bannerIndex = i,
+                  itemBuilder: (context, i) {
+                    return Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(
+                        _banners[i],
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Center(child: Text('Banner image not found')),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-          );
-        },
-      ),
-    ),
-  ),
-),
-
+          ),
 
           const SizedBox(height: 20),
 
-          // 🏷️ Suggested services
           if (suggested.isNotEmpty) ...[
             const Text(
               'Suggested',
@@ -246,7 +232,6 @@ void initState() {
             const SizedBox(height: 20),
           ],
 
-          // 📦 Others section
           const Text(
             'Others',
             style: TextStyle(
@@ -284,13 +269,10 @@ void initState() {
             ),
         ],
       ),
-
-      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 2,
         onTap: (index) {
           if (index == 2) return;
-
           switch (index) {
             case 0:
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
@@ -302,8 +284,7 @@ void initState() {
               Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
             case 3:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
             case 4:
               Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
@@ -314,8 +295,6 @@ void initState() {
     );
   }
 }
-
-// ============= Helper Classes =============
 
 class _Service {
   final String id;
@@ -331,8 +310,6 @@ class _Service {
   });
 }
 
-
-// Horizontal chips for "Suggested"
 class _ServiceChip extends StatelessWidget {
   const _ServiceChip({required this.service, this.onTap});
   final _Service service;
@@ -352,17 +329,16 @@ class _ServiceChip extends StatelessWidget {
         ),
         child: Row(
           children: [
-             CircleAvatar(
+            CircleAvatar(
               radius: 22,
               backgroundColor: Colors.white,
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: service.iconAsset != null
-                          ? Image.asset(service.iconAsset!, fit: BoxFit.contain)
+                    ? Image.asset(service.iconAsset!, fit: BoxFit.contain)
                     : const Icon(Icons.public, color: mycolors.Primary),
               ),
             ),
-
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -382,7 +358,6 @@ class _ServiceChip extends StatelessWidget {
   }
 }
 
-// Grid cards for "Others"
 class _ServiceCard extends StatelessWidget {
   const _ServiceCard({required this.service, this.onTap});
   final _Service service;
@@ -398,51 +373,48 @@ class _ServiceCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
+          border: Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
         ),
-       child: Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    Expanded(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: double.infinity,
-          color: mycolors.btnSecondary,
-          child: service.iconAsset != null
-              ? Image.asset(
-                  service.iconAsset!,
-                  fit: BoxFit.cover, // ✅ fills the box
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.public,
-                    color: mycolors.Primary,
-                    size: 36,
-                  ),
-                )
-              : const Icon(Icons.public, color: mycolors.Primary, size: 36),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  color: mycolors.btnSecondary,
+                  child: service.iconAsset != null
+                      ? Image.asset(
+                          service.iconAsset!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.public,
+                            color: mycolors.Primary,
+                            size: 36,
+                          ),
+                        )
+                      : const Icon(Icons.public, color: mycolors.Primary, size: 36),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              service.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: mycolors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
-      ),
-    ),
-    const SizedBox(height: 10),
-    Text(
-      service.name,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: mycolors.textPrimary,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  ],
-),
-
       ),
     );
   }
 }
 
-// Shown when no results match
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.message});
   final String message;
@@ -454,8 +426,7 @@ class _EmptyState extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
+        border: Border.all(color: mycolors.borderprimary.withOpacity(0.3)),
       ),
       child: Row(
         children: [

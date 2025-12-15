@@ -1,10 +1,12 @@
 // lib/features/auth/signup/signup_otp_page.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:kitaid1/features/authentication/screen/register/widgets/signup_complete_page.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
-
 import 'widgets/otp_fields.dart';
 
 class SignUpOtpPage extends StatefulWidget {
@@ -26,36 +28,53 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
   bool _verifying = false;
 
   Future<void> _verify() async {
-    if (_otp.length != 4) return;
+    if (_otp.length != 6) return;
 
     setState(() => _verifying = true);
 
-    // TODO: Verify OTP with your backend here using widget.signupPayload + _otp
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      // ✅ DEMO OTP for web (accept only 123456)
+      if (_otp != '123456') {
+        throw Exception('Invalid OTP (demo). Try 123456');
+      }
 
-    if (!mounted) return;
-    setState(() => _verifying = false);
+      // ✅ mark phone verified in Firestore
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No user session. Please signup again.');
+      }
 
-    // On success go to the "Verification Complete" page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SignUpCompletePage(),
-      ),
-    );
+      await FirebaseFirestore.instance.collection('Users').doc(user.uid).set({
+        'phoneVerified': true,
+        'verifiedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      setState(() => _verifying = false);
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SignUpCompletePage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _verifying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Future<void> _resend() async {
-    // TODO: trigger resend OTP via backend
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('OTP resent')),
+      const SnackBar(content: Text('Demo OTP: use 123456')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: mycolors.Primary, // Blue page background
+      backgroundColor: mycolors.Primary,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -63,9 +82,8 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ===== Header =====
                 Text(
-                  mytitle.signupTitle, // "signup"
+                  mytitle.signupTitle,
                   style: Theme.of(context)
                       .textTheme
                       .headlineLarge
@@ -73,80 +91,80 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
                   textAlign: TextAlign.center,
                 ),
                 Column(
-                  children: [
-                    const Text(
+                  children: const [
+                    Text(
                       'Enter the OTP',
-                      style: TextStyle(color: Colors.white,fontSize:mysizes.fontSm ),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: mysizes.fontSm,
+                      ),
                     ),
-                    const SizedBox(height:1),
-                  ]
+                    SizedBox(height: 1),
+                  ],
                 ),
                 const SizedBox(height: 80),
-                  const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-                  // 4 OTP boxes with auto-advance & paste support
-                  OtpFields(
-                    length: 4,
-                    onCompleted: (code) => _otp = code,
-                    onChanged: (code) => _otp = code,
-                  ),
+                // ✅ 6-digit OTP
+                OtpFields(
+                  length: 6,
+                  onCompleted: (code) => setState(() => _otp = code),
+                  onChanged: (code) => setState(() => _otp = code),
+                ),
 
-                  const SizedBox(height: 100),
+                const SizedBox(height: 100),
 
-                  // Verify button
-                  Center(
-                 child: SizedBox(
-                   width: 180, //  set your desired button width
-                   child: ElevatedButton(
-                     onPressed: (_otp.length == 4 && !_verifying) ? _verify : null,
-                     style: ElevatedButton.styleFrom(
-                       backgroundColor: Colors.white,              // white fill
-                       foregroundColor: mycolors.textPrimary,      // dark text color
-                       elevation: 0,
-                       shape: RoundedRectangleBorder(
-                         borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
-                         side: const BorderSide(color: Colors.white),
-                       ),
-                       padding: const EdgeInsets.symmetric(
-                         vertical: mysizes.btnheight,
-                       ),
-                     ),
-                     child: _verifying
-                         ? const SizedBox(
+                Center(
+                  child: SizedBox(
+                    width: 180,
+                    child: ElevatedButton(
+                      onPressed: (_otp.length == 6 && !_verifying) ? _verify : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: mycolors.textPrimary,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
+                          side: const BorderSide(color: Colors.white),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: mysizes.btnheight,
+                        ),
+                      ),
+                      child: _verifying
+                          ? const SizedBox(
                               height: 20,
-                                            width: 20,
-                             child: CircularProgressIndicator(
-                               strokeWidth: 2,
-                               color: mycolors.textPrimary,
-                             ),
-                           )
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: mycolors.textPrimary,
+                              ),
+                            )
                           : const Text('Verify'),
                     ),
                   ),
                 ),
 
+                const SizedBox(height: 12),
 
-                  const SizedBox(height: 12),
-
-                  TextButton(
-                    onPressed: _resend,
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white, // ✅ text color white
-                      padding: EdgeInsets.zero,      // removes extra spacing
-                      textStyle: const TextStyle(
-                        decoration: TextDecoration.underline, // ✅ underline text
-                        fontSize: mysizes.fontSm,
-                        fontWeight: FontWeight.w500,
-                      ),
+                TextButton(
+                  onPressed: _resend,
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.zero,
+                    textStyle: const TextStyle(
+                      decoration: TextDecoration.underline,
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w500,
                     ),
-                    child: const Text('Resend OTP'),
                   ),
-
-                ],
-              ),
+                  child: const Text('Resend OTP'),
+                ),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 }

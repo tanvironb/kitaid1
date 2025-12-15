@@ -4,9 +4,8 @@ import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
-// ✅ If you DON'T have a named route '/login', uncomment the import below
-// and update the path to your actual login page file.
-// import 'package:kitaid1/features/authentication/screen/login/login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DeleteAccountPage extends StatefulWidget {
   const DeleteAccountPage({super.key});
@@ -18,6 +17,37 @@ class DeleteAccountPage extends StatefulWidget {
 class _DeleteAccountPageState extends State<DeleteAccountPage> {
   bool _acknowledged = false;
   bool _isDeleting = false;
+
+  Future<void> _deleteCollectionInBatches({
+    required CollectionReference<Map<String, dynamic>> colRef,
+    int batchSize = 300,
+  }) async {
+    while (true) {
+      final snap = await colRef.limit(batchSize).get();
+      if (snap.docs.isEmpty) break;
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (final d in snap.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  Future<void> _deleteUserDataEverywhere(String uid) async {
+    final userDoc = FirebaseFirestore.instance.collection('Users').doc(uid);
+
+    // delete subcollections first (cards, docs). Add more if you create later.
+    await _deleteCollectionInBatches(
+      colRef: userDoc.collection('cards'),
+    );
+    await _deleteCollectionInBatches(
+      colRef: userDoc.collection('docs'),
+    );
+
+    // finally delete the user main doc
+    await userDoc.delete();
+  }
 
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
@@ -51,26 +81,43 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     setState(() => _isDeleting = true);
 
     try {
-      // TODO: Connect to your backend or Firebase delete function.
-      await Future.delayed(const Duration(seconds: 1));
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('No logged-in user. Please login again.');
+      }
+
+      final uid = user.uid;
+
+      // 1) Delete Firestore data
+      await _deleteUserDataEverywhere(uid);
+
+      // 2) Delete Auth user
+      await user.delete();
+
+      // 3) Sign out (safe cleanup)
+      await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
 
-      // Optional success snackbar (won't show long because we navigate)
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Your account has been deleted.')),
       );
 
-      // ✅ Go to Login and remove everything else from back stack
-      // Recommended: use named route (make sure '/login' exists in MaterialApp routes)
+      // Go to login page and clear stack
       Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _isDeleting = false);
 
-      // ✅ If you DON'T have '/login' route, use this instead (and import your login widget):
-      // Navigator.pushAndRemoveUntil(
-      //   context,
-      //   MaterialPageRoute(builder: (_) => const LoginScreen()),
-      //   (_) => false,
-      // );
+      // Most common:
+      // requires-recent-login => user must re-login then delete again
+      final msg = switch (e.code) {
+        'requires-recent-login' =>
+          'For security, please login again then try deleting your account.',
+        _ => e.message ?? 'Delete failed.',
+      };
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _isDeleting = false);
@@ -150,9 +197,9 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        _Bullet(text: 'Your data will be deleted'),
+                        _Bullet(text: 'Your data will be deleted (profile, cards, docs)'),
                         SizedBox(height: mysizes.sm),
-                        _Bullet(text: 'Your password will be deleted'),
+                        _Bullet(text: 'Your login account will be deleted (Firebase Auth)'),
                       ],
                     ),
                   ),

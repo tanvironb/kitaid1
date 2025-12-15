@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
-
-
-bool _hideCurrent = true;
-bool _hideNew = true;
-bool _hideConfirm = true;
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -18,6 +14,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _currentCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+
+  bool _hideCurrent = true;
+  bool _hideNew = true;
+  bool _hideConfirm = true;
 
   bool _submitting = false;
 
@@ -34,8 +34,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         filled: true,
         fillColor: Colors.white,
         hintStyle: TextStyle(color: mycolors.textPrimary.withOpacity(0.6)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
@@ -61,9 +60,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (text.length < 8) return 'At least 8 characters';
     final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
     final hasNumber = RegExp(r'\d').hasMatch(text);
-    if (!hasLetter || !hasNumber) {
-      return 'Include letters and numbers';
-    }
+    if (!hasLetter || !hasNumber) return 'Include letters and numbers';
     return null;
   }
 
@@ -73,60 +70,90 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return null;
   }
 
- Future<void> _submit() async {
-  FocusScope.of(context).unfocus();
-  if (!_formKey.currentState!.validate()) return;
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-  setState(() => _submitting = true);
+    setState(() => _submitting = true);
 
-  try {
-    // TODO: connect to backend
-    await Future.delayed(const Duration(milliseconds: 900));
-
-    if (!mounted) return;
-
-    // 1) Show popup
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Password Changed'),
-          content: const Text('Your password has been changed.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                // just close the dialog
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'no-user',
+          message: 'No logged-in user.',
         );
-      },
-    );
+      }
 
-    // 2) After dialog is closed, go to Settings page
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/settings',
-      (route) => false,
-    );
-  } catch (_) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Failed to update password')),
-    );
-  } finally {
-    if (mounted) setState(() => _submitting = false);
+      final email = user.email;
+      if (email == null || email.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'no-email',
+          message: 'This account has no email on Auth.',
+        );
+      }
+
+      // ✅ 1) Re-authenticate (required)
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: _currentCtrl.text,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // ✅ 2) Update password
+      await user.updatePassword(_newCtrl.text);
+
+      if (!mounted) return;
+
+      // success popup
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text('Password Changed'),
+            content: const Text('Your password has been changed.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(context, '/settings', (route) => false);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      final msg = switch (e.code) {
+        'wrong-password' => 'Current password is incorrect.',
+        'invalid-credential' => 'Current password is incorrect.',
+        'weak-password' => 'New password is too weak.',
+        'requires-recent-login' =>
+          'Please login again, then try changing your password.',
+        'no-user' => 'Please login first.',
+        'no-email' => 'Account email not found. Please login again.',
+        _ => e.message ?? 'Failed to update password.',
+      };
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update password')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
-}
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -148,14 +175,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   child: const SizedBox(
                     width: 36,
                     height: 36,
-                    child:
-                        Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
+                    child: Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
                   ),
                 ),
               ),
             ),
 
-            // Main content
             Column(
               children: [
                 const SizedBox(height: 100),
@@ -165,68 +190,65 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         color: Colors.white,
                         letterSpacing: 4,
                         fontWeight: FontWeight.w800,
-                        fontSize: 26, // 🔹 Increased title size
+                        fontSize: 26,
                       ),
                 ),
-
                 const Spacer(),
 
-                // Centered form
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
-                       TextFormField(
-                        controller: _currentCtrl,
-                        obscureText: _hideCurrent,
-                        validator: _validateCurrent,
-                        decoration: _pillField('Current Password').copyWith(
-                          suffixIcon: IconButton(
-                            onPressed: () => setState(() => _hideCurrent = !_hideCurrent),
-                            icon: Icon(_hideCurrent
-                                ? Icons.visibility_off_outlined
-                                : Icons.remove_red_eye_outlined),
-                            color: mycolors.iconColor ?? Colors.black54, // grey eye like screenshot
+                        TextFormField(
+                          controller: _currentCtrl,
+                          obscureText: _hideCurrent,
+                          validator: _validateCurrent,
+                          decoration: _pillField('Current Password').copyWith(
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _hideCurrent = !_hideCurrent),
+                              icon: Icon(_hideCurrent
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.remove_red_eye_outlined),
+                              color: mycolors.iconColor ?? Colors.black54,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 22),
+                        const SizedBox(height: 22),
 
-                      // New password
-                      TextFormField(
-                        controller: _newCtrl,
-                        obscureText: _hideNew,
-                        validator: _validateNew,
-                        decoration: _pillField('New Password').copyWith(
-                          suffixIcon: IconButton(
-                            onPressed: () => setState(() => _hideNew = !_hideNew),
-                            icon: Icon(_hideNew
-                                ? Icons.visibility_off_outlined
-                                : Icons.remove_red_eye_outlined),
-                            color: mycolors.iconColor ?? Colors.black54,
+                        TextFormField(
+                          controller: _newCtrl,
+                          obscureText: _hideNew,
+                          validator: _validateNew,
+                          decoration: _pillField('New Password').copyWith(
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(() => _hideNew = !_hideNew),
+                              icon: Icon(_hideNew
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.remove_red_eye_outlined),
+                              color: mycolors.iconColor ?? Colors.black54,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 22),
+                        const SizedBox(height: 22),
 
-                      // Confirm new password
-                      TextFormField(
-                        controller: _confirmCtrl,
-                        obscureText: _hideConfirm,
-                        validator: _validateConfirm,
-                        decoration: _pillField('Re-enter New Password').copyWith(
-                          suffixIcon: IconButton(
-                            onPressed: () => setState(() => _hideConfirm = !_hideConfirm),
-                            icon: Icon(_hideConfirm
-                                ? Icons.visibility_off_outlined
-                                : Icons.remove_red_eye_outlined),
-                            color: mycolors.iconColor ?? Colors.black54,
+                        TextFormField(
+                          controller: _confirmCtrl,
+                          obscureText: _hideConfirm,
+                          validator: _validateConfirm,
+                          decoration: _pillField('Re-enter New Password').copyWith(
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _hideConfirm = !_hideConfirm),
+                              icon: Icon(_hideConfirm
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.remove_red_eye_outlined),
+                              color: mycolors.iconColor ?? Colors.black54,
+                            ),
                           ),
                         ),
-                      ),
                       ],
                     ),
                   ),
@@ -234,7 +256,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
                 const SizedBox(height: 32),
 
-                // Change button
                 Center(
                   child: SizedBox(
                     height: 45,
@@ -244,8 +265,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         backgroundColor: Colors.white,
                         foregroundColor: mycolors.textPrimary,
                         elevation: 0,
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
                         shape: const StadiumBorder(),
                       ),
                       child: _submitting
@@ -254,10 +274,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text(
-                              'Change',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('Change', style: TextStyle(fontSize: 16)),
                     ),
                   ),
                 ),

@@ -1,5 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
 import 'package:kitaid1/features/services/biometric_auth_service.dart';
@@ -21,11 +24,11 @@ class _LoginScreenState extends State<LoginScreen>
   late final Animation<double> _sheetFade;
 
   bool _hidePassword = true;
+  bool _loggingIn = false;
 
   final _icController = TextEditingController();
   final _pwController = TextEditingController();
 
-  // ✅ Biometric state
   bool _bioSupported = false;
   bool _bioEnabled = false;
   bool _bioLoading = false;
@@ -49,8 +52,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     _controller.forward();
-
-    // ✅ Load biometric availability + user preference
     _loadBiometric();
   }
 
@@ -66,20 +67,126 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
+  String _digitsOnly(String s) => s.replaceAll(RegExp(r'\D'), '');
+
+  String _icToAuthEmail(String ic) {
+    final digits = _digitsOnly(ic);
+    return '$digits@kitaid.my';
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ✅ NEW: load recents from Firestore into RecentServicesStore (persisted)
+  Future<void> _loadRecentsAfterLogin(String uid) async {
+    final snap = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(uid)
+        .collection('recentServices')
+        .orderBy('lastOpenedAt', descending: true)
+        .limit(10)
+        .get();
+
+    final list = snap.docs.map((d) {
+      final data = d.data();
+      final name = (data['name'] ?? d.id).toString();
+      return ServiceRef(d.id, name);
+    }).toList();
+
+    // Put into in-memory store so HomePage shows instantly
+    RecentServicesStore.instance.setRecents(list);
+  }
+
+  Future<void> _login() async {
+    if (_loggingIn) return;
+
+    final icRaw = _icController.text.trim();
+    final pw = _pwController.text;
+
+    if (icRaw.isEmpty || pw.isEmpty) {
+      _snack('Please enter IC and password.');
+      return;
+    }
+
+    final icDigits = _digitsOnly(icRaw);
+    if (icDigits.length < 8) {
+      _snack('Please enter a valid IC number.');
+      return;
+    }
+
+    final email = _icToAuthEmail(icRaw);
+
+    setState(() => _loggingIn = true);
+
+    try {
+      // 1) Auth login
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: pw,
+      );
+
+      final uid = cred.user?.uid;
+      if (uid == null) {
+        throw FirebaseAuthException(code: 'no-user', message: 'Login failed.');
+      }
+
+      // 2) Verify IC matches Firestore profile
+      final doc =
+          await FirebaseFirestore.instance.collection('Users').doc(uid).get();
+      if (!doc.exists) {
+        await FirebaseAuth.instance.signOut();
+        _snack('User profile not found. Please sign up again.');
+        return;
+      }
+
+      final data = doc.data() ?? {};
+      final storedIc = _digitsOnly((data['IC No'] ?? '').toString());
+      if (storedIc.isEmpty || storedIc != icDigits) {
+        await FirebaseAuth.instance.signOut();
+        _snack('IC number does not match this account.');
+        return;
+      }
+
+      // ✅ 3) Load Recent Services after login (Firestore → store)
+      await _loadRecentsAfterLogin(uid);
+
+      if (!mounted) return;
+      setState(() => _loggingIn = false);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _loggingIn = false);
+
+      final msg = switch (e.code) {
+        'user-not-found' => 'No account found for this IC. Please sign up first.',
+        'wrong-password' => 'Wrong password. Try again.',
+        'invalid-email' => 'Invalid IC format.',
+        _ => e.message ?? 'Login failed. Try again.',
+      };
+
+      _snack(msg);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loggingIn = false);
+      _snack('Error: $e');
+    }
+  }
+
   Future<void> _biometricLogin() async {
     if (_bioLoading) return;
 
     final bio = BiometricAuthService.instance;
-
-    // re-check in case user changed settings
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
 
     if (!supported || !enabled) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Biometric login is not enabled.')),
-      );
+      _snack('Biometric login is not enabled.');
       return;
     }
 
@@ -92,7 +199,15 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (!ok) return;
 
-    // ✅ For now, go to home. Later, check FirebaseAuth currentUser.
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _snack('No saved session. Please login with IC + password first.');
+      return;
+    }
+
+    // ✅ OPTIONAL: also load recents for biometric login
+    await _loadRecentsAfterLogin(user.uid);
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const HomePage()),
@@ -146,21 +261,15 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-
     final showBiometricButton = _bioSupported && _bioEnabled;
 
     return Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
-            // ===== SAME BACKGROUND AS SPLASH =====
             Positioned.fill(
-              child: Container(
-                color: const Color.fromARGB(255, 0, 98, 245),
-              ),
+              child: Container(color: const Color.fromARGB(255, 0, 98, 245)),
             ),
-
-            // ===== LOGO (NO BLUR, JUST SOFT OPACITY) =====
             Positioned.fill(
               child: Center(
                 child: Opacity(
@@ -173,8 +282,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
             ),
-
-            // ===== Bottom sheet (animated) =====
             Align(
               alignment: Alignment.bottomCenter,
               child: FadeTransition(
@@ -185,9 +292,8 @@ class _LoginScreenState extends State<LoginScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
                     decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(44),
-                      ),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(44)),
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -201,7 +307,6 @@ class _LoginScreenState extends State<LoginScreen>
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          // small down arrow bubble
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Container(
@@ -217,28 +322,25 @@ class _LoginScreenState extends State<LoginScreen>
                                   Icons.keyboard_arrow_down_rounded,
                                   color: Colors.white,
                                 ),
-                                onPressed: () {
-                                  FocusScope.of(context).unfocus();
-                                },
+                                onPressed: () =>
+                                    FocusScope.of(context).unfocus(),
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 6),
-
-                          // Title
                           Text(
                             mytitle.loginTitle.toUpperCase(),
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
                                   letterSpacing: 5,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.black.withOpacity(0.85),
                                 ),
                           ),
-
                           const SizedBox(height: 16),
 
-                          // IC
                           TextFormField(
                             controller: _icController,
                             style: TextStyle(
@@ -253,10 +355,8 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 14),
 
-                          // Password
                           TextFormField(
                             controller: _pwController,
                             obscureText: _hidePassword,
@@ -267,8 +367,8 @@ class _LoginScreenState extends State<LoginScreen>
                             decoration: _pillDecoration(
                               hint: mytitle.password,
                               suffix: IconButton(
-                                onPressed: () =>
-                                    setState(() => _hidePassword = !_hidePassword),
+                                onPressed: () => setState(
+                                    () => _hidePassword = !_hidePassword),
                                 icon: Icon(
                                   _hidePassword
                                       ? Icons.visibility_outlined
@@ -281,36 +381,39 @@ class _LoginScreenState extends State<LoginScreen>
 
                           const SizedBox(height: 18),
 
-                          // Login button (blue)
                           SizedBox(
                             width: size.width * 0.35,
                             child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const HomePage()),
-                                );
-                              },
+                              onPressed: _loggingIn ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: mycolors.Primary,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                               ),
-                              child: const Text(
-                                'Login',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
+                              child: _loggingIn
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Login',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
                             ),
                           ),
 
-                          // ✅ Biometric button (only if enabled)
                           if (showBiometricButton) ...[
                             const SizedBox(height: 10),
                             IconButton(
@@ -319,7 +422,8 @@ class _LoginScreenState extends State<LoginScreen>
                                   ? const SizedBox(
                                       width: 22,
                                       height: 22,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
                                     )
                                   : const Icon(Icons.fingerprint),
                               iconSize: 34,
@@ -330,7 +434,6 @@ class _LoginScreenState extends State<LoginScreen>
 
                           const SizedBox(height: 16),
 
-                          // Footer
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -345,7 +448,8 @@ class _LoginScreenState extends State<LoginScreen>
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const SignUpPage()),
+                                    MaterialPageRoute(
+                                        builder: (_) => const SignUpPage()),
                                   );
                                 },
                                 child: Text(
@@ -360,7 +464,6 @@ class _LoginScreenState extends State<LoginScreen>
                             ],
                           ),
 
-                          // ✅ Small helper text if device supports but user didn’t enable yet
                           if (_bioSupported && !_bioEnabled) ...[
                             const SizedBox(height: 10),
                             Text(
