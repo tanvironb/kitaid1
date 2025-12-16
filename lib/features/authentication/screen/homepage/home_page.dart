@@ -42,11 +42,18 @@ class UserProfile {
 class UserCard {
   final String id;
   final String title;
+
+  /// ✅ Card image from Firestore (download URL) e.g. field "MyKad"
+  final String? imageUrl;
+
+  /// Optional fallbacks
   final IconData? icon;
   final String? assetLogo;
+
   const UserCard({
     required this.id,
     required this.title,
+    this.imageUrl,
     this.icon,
     this.assetLogo,
   });
@@ -83,7 +90,7 @@ class RecentServicesStore extends ChangeNotifier {
 class ServiceRef {
   final String id;
   final String name;
-  final String? logoAsset; // ✅ logo for recent chip
+  final String? logoAsset;
   const ServiceRef(this.id, this.name, {this.logoAsset});
 }
 
@@ -121,7 +128,7 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cardsSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recentSub;
 
-  // ✅ fallback mapping (if Firestore doesn't store logoAsset yet)
+  // ✅ map service id -> local logo
   static const Map<String, String> _serviceLogos = {
     'jpj': 'assets/jpj.png',
     'immigration': 'assets/immigration.png',
@@ -212,7 +219,7 @@ class _HomePageState extends State<HomePage> {
         );
       });
 
-      // Users/{uid}/cards
+      // ✅ Users/{uid}/cards
       _cardsSub = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -221,14 +228,29 @@ class _HomePageState extends State<HomePage> {
           .listen((snap) {
         final list = snap.docs.map((d) {
           final data = d.data();
+
           final title = (data['title'] ?? d.id).toString();
-          return UserCard(id: d.id, title: title);
+
+          // ✅ IMPORTANT:
+          // Your Firestore doc Users/{uid}/cards/IC has field "MyKad" containing the download URL
+          final myKadUrl = (data['MyKad'] ?? '').toString().trim();
+
+          // Optional alternative keys if you later add more cards
+          final imageUrl = myKadUrl.isNotEmpty
+              ? myKadUrl
+              : (data['imageUrl'] ?? data['cardImageUrl'] ?? '').toString().trim();
+
+          return UserCard(
+            id: d.id,
+            title: title,
+            imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
+          );
         }).toList();
 
         ProfileRepository.instance.setCards(list);
       });
 
-      // ✅ Users/{uid}/recentServices
+      // Users/{uid}/recentServices
       _recentSub = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -240,15 +262,8 @@ class _HomePageState extends State<HomePage> {
         final list = snap.docs.map((d) {
           final data = d.data();
           final name = (data['name'] ?? d.id).toString();
-
-          // ✅ read logoAsset if you store it, fallback to local mapping
-          final logo = (data['logoAsset'] ?? _serviceLogos[d.id] ?? '').toString();
-
-          return ServiceRef(
-            d.id,
-            name,
-            logoAsset: logo.isNotEmpty ? logo : null,
-          );
+          final logo = _serviceLogos[d.id];
+          return ServiceRef(d.id, name, logoAsset: logo);
         }).toList();
 
         RecentServicesStore.instance.setRecents(list);
@@ -290,7 +305,7 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // HEADER
+                      // HEADER: Avatar + Name
                       Row(
                         children: [
                           GestureDetector(
@@ -362,13 +377,15 @@ class _HomePageState extends State<HomePage> {
                             crossAxisCount: 2,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
-                            childAspectRatio: 2.6,
+                            // ✅ a bit taller so the card image looks like a real card
+                            childAspectRatio: 1.75,
                           ),
                           itemCount: cards.length,
                           itemBuilder: (context, i) {
                             final c = cards[i];
                             return _CardPill(
                               title: c.title,
+                              imageUrl: c.imageUrl,
                               assetLogo: c.assetLogo,
                               icon: c.icon ?? Icons.credit_card,
                               onTap: () => Navigator.pushNamed(context, '/profile'),
@@ -379,7 +396,7 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 24),
 
-                      // RECENT SERVICES ✅ with logo
+                      // RECENT SERVICES
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -405,14 +422,14 @@ class _HomePageState extends State<HomePage> {
                         )
                       else
                         SizedBox(
-                          height: 48,
+                          height: 52,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: recents.length,
                             separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (context, i) {
                               final s = recents[i];
-                              return _RecentChip(
+                              return _ChipButton(
                                 label: s.name,
                                 logoAsset: s.logoAsset,
                                 onTap: () => Navigator.pushNamed(context, '/services'),
@@ -466,7 +483,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
 
-      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 0,
         onTap: (index) {
@@ -483,8 +499,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
             case 3:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
               break;
             case 4:
               Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
@@ -501,12 +516,15 @@ class _HomePageState extends State<HomePage> {
 /// --------------------------
 class _CardPill extends StatelessWidget {
   final String title;
+  final String? imageUrl;
   final String? assetLogo;
   final IconData icon;
   final VoidCallback onTap;
+
   const _CardPill({
     required this.title,
     required this.onTap,
+    this.imageUrl,
     this.assetLogo,
     required this.icon,
   });
@@ -515,6 +533,90 @@ class _CardPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+
+    // ✅ If we have a Firestore imageUrl, show the FULL card preview
+    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+      return Material(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        value: progress.expectedTotalBytes == null
+                            ? null
+                            : progress.cumulativeBytesLoaded /
+                                (progress.expectedTotalBytes ?? 1),
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => Container(
+                  color: scheme.primaryContainer,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.image_not_supported_outlined,
+                    color: scheme.onPrimaryContainer,
+                    size: 28,
+                  ),
+                ),
+              ),
+
+              // Soft gradient for readable title
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.55),
+                      ],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.titleSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Fallback old style
     return Material(
       color: scheme.primaryContainer,
       borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
@@ -569,13 +671,12 @@ class _CardPill extends StatelessWidget {
   }
 }
 
-// ✅ NEW: Recent chip with small logo
-class _RecentChip extends StatelessWidget {
+class _ChipButton extends StatelessWidget {
   final String label;
   final String? logoAsset;
   final VoidCallback onTap;
 
-  const _RecentChip({
+  const _ChipButton({
     required this.label,
     required this.onTap,
     this.logoAsset,
@@ -592,37 +693,23 @@ class _RecentChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.white,
+              if (logoAsset != null)
+                ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                ),
-                alignment: Alignment.center,
-                child: (logoAsset != null && logoAsset!.isNotEmpty)
-                    ? Image.asset(
-                        logoAsset!,
-                        width: 16,
-                        height: 16,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.public,
-                          size: 14,
-                          color: mycolors.Primary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.public,
-                        size: 14,
-                        color: mycolors.Primary,
-                      ),
-              ),
-              const SizedBox(width: 8),
+                  child: Image.asset(
+                    logoAsset!,
+                    width: 18,
+                    height: 18,
+                    fit: BoxFit.contain,
+                  ),
+                )
+              else
+                const SizedBox(width: 0),
+              if (logoAsset != null) const SizedBox(width: 8),
               Text(label, style: Theme.of(context).textTheme.labelLarge),
             ],
           ),
