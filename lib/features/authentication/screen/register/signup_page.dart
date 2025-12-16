@@ -1,4 +1,3 @@
-// lib/features/auth/signup/signup_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,7 +18,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _name = TextEditingController();
-  final _ic = TextEditingController();
+  final _ic = TextEditingController(); // IC or Passport
   final _email = TextEditingController();
   final _phone = TextEditingController(); // local number only
   final _password = TextEditingController();
@@ -76,12 +75,17 @@ class _SignUpPageState extends State<SignUpPage> {
     return '+60$digits';
   }
 
-  /// Convert IC to an "email" for FirebaseAuth login
-  /// Example: 050101101010 -> 050101101010@kitaid.my
-  String _icToAuthEmail(String ic) {
-    final digits = ic.replaceAll(RegExp(r'\D'), '');
-    return '$digits@kitaid.my';
+  /// ✅ Normalize ID same as login:
+  /// Uppercase + keep only A-Z and 0-9.
+  String _normalizeLoginId(String input) {
+    return input
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
+
+  /// ✅ Convert ID to FirebaseAuth "email"
+  String _idToAuthEmail(String normalizedId) => '$normalizedId@kitaid.my';
 
   Future<void> _onNext() async {
     final ok = _formKey.currentState?.validate() ?? false;
@@ -91,10 +95,21 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final phoneFull = _formatMalaysiaPhone(_phone.text);
-      final icRaw = _ic.text.trim();
-      final authEmail = _icToAuthEmail(icRaw);
 
-      // 1) Create account in Firebase Auth using IC-based email
+      final rawId = _ic.text.trim(); // can be IC or passport
+      final normalizedId = _normalizeLoginId(rawId);
+
+      if (normalizedId.length < 6) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid IC/Passport number.')),
+        );
+        return;
+      }
+
+      final authEmail = _idToAuthEmail(normalizedId);
+
+      // 1) Create account in Firebase Auth using ID-based email
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: authEmail,
         password: _password.text,
@@ -102,13 +117,22 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final uid = cred.user!.uid;
 
-      // 2) Save profile in Firestore (store real email + IC + phone)
+      // 2) Save profile in Firestore
       await FirebaseFirestore.instance.collection('Users').doc(uid).set({
-        'Email': _email.text.trim(),     // real email (for contact)
-        'AuthEmail': authEmail,          // optional, for debugging/login mapping
-        'IC No': icRaw,
         'Name': _name.text.trim(),
+        'Email': _email.text.trim(), // real email
         'Phone No': phoneFull,
+
+        // ✅ login mapping fields
+        'AuthEmail': authEmail,
+        'LoginId': rawId,
+        'LoginIdNormalized': normalizedId,
+
+        // optional legacy fields (so older code still works)
+        // You can keep these OR remove later once everything is stable:
+        'IC No': rawId,
+        'Passport No': rawId,
+
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -124,7 +148,8 @@ class _SignUpPageState extends State<SignUpPage> {
             signupPayload: {
               'uid': uid,
               'name': _name.text.trim(),
-              'ic': icRaw,
+              'loginId': rawId,
+              'loginIdNormalized': normalizedId,
               'email': _email.text.trim(),
               'phone': phoneFull,
             },
@@ -136,8 +161,8 @@ class _SignUpPageState extends State<SignUpPage> {
       setState(() => _loading = false);
 
       final msg = switch (e.code) {
-        'email-already-in-use' => 'This IC is already registered.',
-        'invalid-email' => 'Invalid IC format.',
+        'email-already-in-use' => 'This IC/Passport is already registered.',
+        'invalid-email' => 'Invalid IC/Passport format.',
         'weak-password' => 'Password is too weak.',
         _ => e.message ?? 'Signup failed. Try again.',
       };
@@ -200,7 +225,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _ic,
                     validator: _req,
                     decoration: const InputDecoration(
-                      labelText: mytitle.s_icno,
+                      labelText: 'IC / Passport No',
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -240,11 +265,8 @@ class _SignUpPageState extends State<SignUpPage> {
                       filled: true,
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePw ? Icons.visibility_off : Icons.visibility,
-                        ),
-                        onPressed: () =>
-                            setState(() => _obscurePw = !_obscurePw),
+                        icon: Icon(_obscurePw ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _obscurePw = !_obscurePw),
                       ),
                     ),
                   ),
@@ -259,11 +281,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       filled: true,
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirm
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
+                        icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
                         onPressed: () =>
                             setState(() => _obscureConfirm = !_obscureConfirm),
                       ),
@@ -278,7 +296,11 @@ class _SignUpPageState extends State<SignUpPage> {
                       child: ElevatedButton(
                         onPressed: _loading ? null : _onNext,
                         child: _loading
-                            ? const CircularProgressIndicator(strokeWidth: 2)
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
                             : const Text('Next'),
                       ),
                     ),

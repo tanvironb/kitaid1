@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _hidePassword = true;
   bool _loggingIn = false;
 
-  final _icController = TextEditingController();
+  final _icController = TextEditingController(); // IC/Passport input
   final _pwController = TextEditingController();
 
   bool _bioSupported = false;
@@ -67,18 +67,28 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  String _digitsOnly(String s) => s.replaceAll(RegExp(r'\D'), '');
-
-  String _icToAuthEmail(String ic) {
-    final digits = _digitsOnly(ic);
-    return '$digits@kitaid.my';
+  /// ✅ Same normalization used in signup:
+  /// - Trim
+  /// - Uppercase
+  /// - Keep only A-Z and 0-9
+  /// Examples:
+  ///  "050101-10-1010" -> "050101101010"
+  ///  "A02591787" -> "A02591787"
+  String _normalizeLoginId(String input) {
+    return input
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
+
+  /// ✅ Convert to FirebaseAuth email (must match signup)
+  String _idToAuthEmail(String normalizedId) => '$normalizedId@kitaid.my';
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ✅ NEW: load recents from Firestore into RecentServicesStore (persisted)
+  // ✅ Load recents from Firestore into RecentServicesStore (persisted)
   Future<void> _loadRecentsAfterLogin(String uid) async {
     final snap = await FirebaseFirestore.instance
         .collection('Users')
@@ -94,35 +104,36 @@ class _LoginScreenState extends State<LoginScreen>
       return ServiceRef(d.id, name);
     }).toList();
 
-    // Put into in-memory store so HomePage shows instantly
     RecentServicesStore.instance.setRecents(list);
   }
 
   Future<void> _login() async {
     if (_loggingIn) return;
 
-    final icRaw = _icController.text.trim();
+    final rawId = _icController.text;
     final pw = _pwController.text;
 
-    if (icRaw.isEmpty || pw.isEmpty) {
-      _snack('Please enter IC and password.');
+    if (rawId.trim().isEmpty || pw.isEmpty) {
+      _snack('Please enter IC/Passport and password.');
       return;
     }
 
-    final icDigits = _digitsOnly(icRaw);
-    if (icDigits.length < 8) {
-      _snack('Please enter a valid IC number.');
+    final normalizedId = _normalizeLoginId(rawId);
+
+    // Basic length check (change if you want)
+    if (normalizedId.length < 6) {
+      _snack('Please enter a valid IC/Passport number.');
       return;
     }
 
-    final email = _icToAuthEmail(icRaw);
+    final authEmail = _idToAuthEmail(normalizedId);
 
     setState(() => _loggingIn = true);
 
     try {
-      // 1) Auth login
+      // 1) Auth login (using ID-as-email mapping)
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
+        email: authEmail,
         password: pw,
       );
 
@@ -131,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen>
         throw FirebaseAuthException(code: 'no-user', message: 'Login failed.');
       }
 
-      // 2) Verify IC matches Firestore profile
+      // 2) Verify ID against Firestore (prevents “wrong letters still log in”)
       final doc =
           await FirebaseFirestore.instance.collection('Users').doc(uid).get();
       if (!doc.exists) {
@@ -141,14 +152,28 @@ class _LoginScreenState extends State<LoginScreen>
       }
 
       final data = doc.data() ?? {};
-      final storedIc = _digitsOnly((data['IC No'] ?? '').toString());
-      if (storedIc.isEmpty || storedIc != icDigits) {
+
+      // Prefer new field:
+      final storedNormalized = _normalizeLoginId(
+        (data['LoginIdNormalized'] ?? data['LoginId'] ?? '').toString(),
+      );
+
+      // Backward compatibility with older schema:
+      final legacyIc = _normalizeLoginId((data['IC No'] ?? '').toString());
+      final legacyPassport =
+          _normalizeLoginId((data['Passport No'] ?? '').toString());
+
+      final match = storedNormalized.isNotEmpty
+          ? (storedNormalized == normalizedId)
+          : (legacyIc == normalizedId || legacyPassport == normalizedId);
+
+      if (!match) {
         await FirebaseAuth.instance.signOut();
-        _snack('IC number does not match this account.');
+        _snack('IC/Passport number does not match this account.');
         return;
       }
 
-      // ✅ 3) Load Recent Services after login (Firestore → store)
+      // 3) Load Recent Services after login
       await _loadRecentsAfterLogin(uid);
 
       if (!mounted) return;
@@ -163,9 +188,11 @@ class _LoginScreenState extends State<LoginScreen>
       setState(() => _loggingIn = false);
 
       final msg = switch (e.code) {
-        'user-not-found' => 'No account found for this IC. Please sign up first.',
+        'user-not-found' =>
+          'No account found for this IC/Passport. Please sign up first.',
         'wrong-password' => 'Wrong password. Try again.',
-        'invalid-email' => 'Invalid IC format.',
+        'invalid-email' => 'Invalid IC/Passport format.',
+        'invalid-credential' => 'Wrong IC/Passport or password.',
         _ => e.message ?? 'Login failed. Try again.',
       };
 
@@ -201,11 +228,11 @@ class _LoginScreenState extends State<LoginScreen>
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _snack('No saved session. Please login with IC + password first.');
+      _snack('No saved session. Please login with IC/Passport + password first.');
       return;
     }
 
-    // ✅ OPTIONAL: also load recents for biometric login
+    // ✅ Load recents for biometric login too
     await _loadRecentsAfterLogin(user.uid);
 
     Navigator.pushReplacement(
@@ -348,7 +375,7 @@ class _LoginScreenState extends State<LoginScreen>
                               fontSize: mysizes.fontSm,
                             ),
                             decoration: _pillDecoration(
-                              hint: mytitle.icno,
+                              hint: 'IC / Passport No',
                               suffix: Icon(
                                 Icons.person_outline_rounded,
                                 color: Colors.black.withOpacity(0.55),
@@ -367,8 +394,8 @@ class _LoginScreenState extends State<LoginScreen>
                             decoration: _pillDecoration(
                               hint: mytitle.password,
                               suffix: IconButton(
-                                onPressed: () => setState(
-                                    () => _hidePassword = !_hidePassword),
+                                onPressed: () =>
+                                    setState(() => _hidePassword = !_hidePassword),
                                 icon: Icon(
                                   _hidePassword
                                       ? Icons.visibility_outlined
