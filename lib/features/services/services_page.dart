@@ -24,7 +24,7 @@ class _ServicesPageState extends State<ServicesPage> {
 
   final List<_Service> _all = const [
     _Service(id: 'jpj', name: 'JPJ', suggested: true, iconAsset: 'assets/jpj.png'),
-    _Service(id: 'immigration', name: 'Immigration', suggested: true, iconAsset: 'assets/immigration.png'),
+    _Service(id: 'emgs', name: 'EMGS', suggested: true, iconAsset: 'assets/emgs.jpeg'),
     _Service(id: 'jpn', name: 'JPN', suggested: true, iconAsset: 'assets/jpn.png'),
     _Service(id: 'etiqa', name: 'Etiqa', suggested: false, iconAsset: 'assets/etiqa.png'),
     _Service(id: 'mysejahtera', name: 'MySejahtera', suggested: false, iconAsset: 'assets/mysejahtera.png'),
@@ -32,7 +32,7 @@ class _ServicesPageState extends State<ServicesPage> {
 
   static const Map<String, String> _serviceUrls = {
     'jpj': 'https://www.jpj.gov.my/',
-    'immigration': 'https://www.imi.gov.my/',
+    'emgs': 'https://visa.educationmalaysia.gov.my/',
     'jpn': 'https://www.jpn.gov.my/my/',
     'etiqa': 'https://www.etiqa.com.my/',
     'mysejahtera': 'https://mysejahtera.moh.gov.my/en/',
@@ -40,7 +40,7 @@ class _ServicesPageState extends State<ServicesPage> {
 
   final List<String> _banners = const [
     'assets/etiqa.png',
-    'assets/immigration.png',
+    'assets/emgs.jpeg',
     'assets/jpj.png',
     'assets/jpn.png',
     'assets/mysejahtera.png',
@@ -341,15 +341,16 @@ class _ServiceChip extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                service.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: mycolors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+               child: Text(
+    service.name,
+    maxLines: 1, // ✅ force single line
+    overflow: TextOverflow.ellipsis,
+    style: const TextStyle(
+      color: mycolors.textPrimary,
+      fontWeight: FontWeight.w700,
+      fontSize: 15, // ✅ slightly smaller text
+    ),
+  ),
             ),
           ],
         ),
