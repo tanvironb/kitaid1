@@ -43,7 +43,7 @@ class UserCard {
   final String id;
   final String title;
 
-  /// ✅ Card image from Firestore (download URL) e.g. field "MyKad"
+  /// ✅ Card image from Firestore (download URL)
   final String? imageUrl;
 
   /// Optional fallbacks
@@ -128,7 +128,6 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cardsSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _recentSub;
 
-  // ✅ map service id -> local logo
   static const Map<String, String> _serviceLogos = {
     'jpj': 'assets/jpj.png',
     'immigration': 'assets/immigration.png',
@@ -187,6 +186,82 @@ class _HomePageState extends State<HomePage> {
     _listenAuthAndProfile();
   }
 
+  bool _looksLikeUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    if (s.isEmpty) return false;
+
+    // ✅ Accept general http(s)
+    if (s.startsWith('http://') || s.startsWith('https://')) return true;
+
+    return false;
+  }
+
+  bool _looksLikeFirebaseStorageUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    if (s.isEmpty) return false;
+    return s.contains('firebasestorage.googleapis.com') ||
+        s.contains('storage.googleapis.com');
+  }
+
+  /// ✅ SUPER ROBUST:
+  /// - Case-insensitive key match (License / license / LICENSE / "license ")
+  /// - Special case: IC uses "MyKad"
+  /// - Special case: Driving uses "license"
+  /// - Fallback: scan ALL fields for a Firebase Storage URL
+  String? _pickCardImageUrl(String docId, Map<String, dynamic> data) {
+    String? s(dynamic v) => v?.toString();
+
+    final id = docId.trim().toLowerCase();
+
+    // Build a case-insensitive map of keys
+    final Map<String, dynamic> lower = {};
+    for (final e in data.entries) {
+      lower[e.key.toString().trim().toLowerCase()] = e.value;
+    }
+
+    // 1) IC special (your working field is "MyKad")
+    if (id == 'ic' || id.contains('mykad')) {
+      final v = s(lower['mykad']) ?? s(data['MyKad']);
+      if (_looksLikeUrl(v)) return v!.trim();
+    }
+
+    // 2) Driving license special (field "license" but may be different case)
+    if (id.contains('driving')) {
+      final v = s(lower['license']) ?? s(data['license']) ?? s(data['License']);
+      if (_looksLikeUrl(v)) return v!.trim();
+    }
+
+    // 3) Common keys (case-insensitive)
+    const commonKeys = [
+      'license',
+      'mykad',
+      'ic',
+      'imageurl',
+      'url',
+      'cardimageurl',
+      'front',
+      'photo',
+      'card',
+    ];
+
+    for (final k in commonKeys) {
+      final v = s(lower[k]);
+      if (_looksLikeUrl(v)) return v!.trim();
+    }
+
+    // 4) Best fallback: scan ALL values for Firebase Storage url
+    for (final e in data.entries) {
+      final v = s(e.value);
+      if (_looksLikeFirebaseStorageUrl(v) || _looksLikeUrl(v)) {
+        return v!.trim();
+      }
+    }
+
+    return null;
+  }
+
   void _listenAuthAndProfile() {
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
       _userDocSub?.cancel();
@@ -200,7 +275,6 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // Users/{uid}
       _userDocSub = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -228,22 +302,17 @@ class _HomePageState extends State<HomePage> {
           .listen((snap) {
         final list = snap.docs.map((d) {
           final data = d.data();
-
           final title = (data['title'] ?? d.id).toString();
 
-          // ✅ IMPORTANT:
-          // Your Firestore doc Users/{uid}/cards/IC has field "MyKad" containing the download URL
-          final myKadUrl = (data['MyKad'] ?? '').toString().trim();
+          final picked = _pickCardImageUrl(d.id, data);
 
-          // Optional alternative keys if you later add more cards
-          final imageUrl = myKadUrl.isNotEmpty
-              ? myKadUrl
-              : (data['imageUrl'] ?? data['cardImageUrl'] ?? '').toString().trim();
+          // ✅ DEBUG: you will see this in your VS Code debug console
+          debugPrint('🪪 CARD DOC: "${d.id}" keys=${data.keys.toList()} url=$picked');
 
           return UserCard(
             id: d.id,
             title: title,
-            imageUrl: imageUrl.isNotEmpty ? imageUrl : null,
+            imageUrl: picked,
           );
         }).toList();
 
@@ -317,7 +386,6 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // HEADER: Avatar + Name
                       Row(
                         children: [
                           GestureDetector(
@@ -354,7 +422,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 20),
 
-                      // MY CARDS
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -390,7 +457,6 @@ class _HomePageState extends State<HomePage> {
                             crossAxisCount: 2,
                             mainAxisSpacing: 12,
                             crossAxisSpacing: 12,
-                            // ✅ a bit taller so the card image looks like a real card
                             childAspectRatio: 1.75,
                           ),
                           itemCount: cards.length,
@@ -401,7 +467,6 @@ class _HomePageState extends State<HomePage> {
                               imageUrl: c.imageUrl,
                               assetLogo: c.assetLogo,
                               icon: c.icon ?? Icons.credit_card,
-                              // ✅ UPDATED: go to Card Details (NOT profile)
                               onTap: () => _openCardDetails(c),
                             );
                           },
@@ -410,7 +475,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 24),
 
-                      // RECENT SERVICES
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -457,7 +521,6 @@ class _HomePageState extends State<HomePage> {
 
                       const SizedBox(height: 24),
 
-                      // EMERGENCY
                       Text(
                         'Emergency',
                         style: text.titleMedium?.copyWith(
@@ -554,8 +617,9 @@ class _CardPill extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    // ✅ If we have a Firestore imageUrl, show the FULL card preview
-    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
+    final hasUrl = imageUrl != null && imageUrl!.trim().isNotEmpty;
+
+    if (hasUrl) {
       return Material(
         color: scheme.primaryContainer,
         borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
@@ -566,30 +630,10 @@ class _CardPill extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               Image.network(
-                imageUrl!,
+                imageUrl!.trim(),
                 fit: BoxFit.cover,
-
-                // 🔄 Loading indicator
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        value: progress.expectedTotalBytes == null
-                            ? null
-                            : progress.cumulativeBytesLoaded /
-                                (progress.expectedTotalBytes ?? 1),
-                      ),
-                    ),
-                  );
-                },
-
-                // ❌ Error handler
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('❌ IC image failed to load: $error');
+                  debugPrint('❌ Card image failed to load: $error');
                   return Container(
                     color: scheme.primaryContainer,
                     alignment: Alignment.center,
@@ -601,8 +645,6 @@ class _CardPill extends StatelessWidget {
                   );
                 },
               ),
-
-              // Soft gradient for readable title
               Positioned(
                 left: 0,
                 right: 0,
@@ -644,7 +686,7 @@ class _CardPill extends StatelessWidget {
       );
     }
 
-    // Fallback old style
+    // Fallback pill (icon)
     return Material(
       color: scheme.primaryContainer,
       borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),
@@ -734,9 +776,7 @@ class _ChipButton extends StatelessWidget {
                     height: 18,
                     fit: BoxFit.contain,
                   ),
-                )
-              else
-                const SizedBox(width: 0),
+                ),
               if (logoAsset != null) const SizedBox(width: 8),
               Text(label, style: Theme.of(context).textTheme.labelLarge),
             ],
@@ -931,8 +971,8 @@ class _EmergencyBottomSheet extends StatelessWidget {
               leading: Icon(Icons.phone_outlined,
                   size: 22, color: theme.iconTheme.color),
               title: Text(phone,
-                  style:
-                      textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
+                  style: textTheme.bodyMedium
+                      ?.copyWith(color: mycolors.textPrimary)),
               onTap: () => _launchPhone(phone),
             ),
             if (url != null && url!.isNotEmpty) ...[

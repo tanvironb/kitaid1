@@ -17,15 +17,21 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfileCardItem {
-  final String id;
+  final String id; // Firestore doc id (example: "driving license", "ic", ...)
   final String title;
   final String idLabel;
+
+  /// ✅ Network image url from Firestore (Firebase Storage downloadURL)
+  final String? imageUrl;
+
+  /// Local asset fallback (optional, keep for future)
   final String? imageAsset;
 
   const ProfileCardItem({
     required this.id,
     required this.title,
     required this.idLabel,
+    this.imageUrl,
     this.imageAsset,
   });
 }
@@ -108,7 +114,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   final displayName = name.isNotEmpty ? name : 'User';
                   final displayId = ic.isNotEmpty ? ic : uid;
 
-                  // show small text if not yet stored
                   final displayCountry = country.isNotEmpty ? country : '-';
                   final displayDob = dob.isNotEmpty ? dob : '-';
 
@@ -136,7 +141,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   children: [
                                     Text(
                                       displayName,
-                                      style: theme.textTheme.titleMedium?.copyWith(
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
                                         color: mycolors.Primary,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -144,7 +150,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'IC: $displayId',
-                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
                                         color: mycolors.textPrimary,
                                       ),
                                     ),
@@ -152,7 +159,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       const SizedBox(height: 2),
                                       Text(
                                         'Phone: $phone',
-                                        style: theme.textTheme.bodySmall?.copyWith(
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
                                           color: mycolors.textPrimary,
                                         ),
                                       ),
@@ -268,16 +276,20 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
             case 1:
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
             case 2:
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
             case 3:
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
             case 4:
-              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/profile', (_) => false);
               break;
           }
         },
@@ -326,9 +338,10 @@ class _SegmentTab extends StatelessWidget {
 /// ---------------------------
 /// CARDS FROM FIRESTORE
 /// Path: Users/{uid}/cards
-/// Fields expected:
-/// - title (String)
-/// - idLabel (String)
+///
+/// ✅ Same idea as Home page:
+/// - Try common keys first (license / ic / mykad / imageUrl / url)
+/// - If still not found, scan ALL fields and pick the first https downloadURL
 /// ---------------------------
 class _CardsFromFirestore extends StatelessWidget {
   const _CardsFromFirestore({
@@ -342,6 +355,42 @@ class _CardsFromFirestore extends StatelessWidget {
   final String ownerName;
   final String ownerDob;
   final String ownerCountry;
+
+  bool _looksLikeUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    if (s.isEmpty) return false;
+    return s.startsWith('http://') || s.startsWith('https://');
+  }
+
+  String? _pickImageUrl(String docId, Map<String, dynamic> data) {
+    String? asString(dynamic v) => v?.toString().trim();
+
+    // 1) common keys first
+    const keys = [
+      'license', // driving license
+      'ic', // IC
+      'mykad', // MyKad
+      'imageUrl',
+      'url',
+      'front',
+      'card',
+      'photo',
+    ];
+
+    for (final k in keys) {
+      final v = asString(data[k]);
+      if (_looksLikeUrl(v)) return v!;
+    }
+
+    // 2) fallback: scan all fields for any URL
+    for (final e in data.entries) {
+      final v = asString(e.value);
+      if (_looksLikeUrl(v)) return v!;
+    }
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,7 +411,8 @@ class _CardsFromFirestore extends StatelessWidget {
         if (docs.isEmpty) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              padding:
+                  const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
               child: Text(
                 'No cards yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -373,12 +423,34 @@ class _CardsFromFirestore extends StatelessWidget {
           );
         }
 
+        // Optional: sort to show IC first, then Driving License
+        docs.sort((a, b) {
+          String rank(String id) {
+            final x = id.trim().toLowerCase();
+            if (x == 'ic' || x.contains('mykad')) return '0_$x';
+            if (x.contains('driving')) return '1_$x';
+            return '2_$x';
+          }
+
+          return rank(a.id).compareTo(rank(b.id));
+        });
+
         final cards = docs.map((d) {
           final data = d.data();
+
+          final title = (data['title'] ?? d.id).toString().trim();
+          final rawIdLabel = (data['idLabel'] ?? '').toString().trim();
+
+          // ✅ safety fallback so the UI always has something
+          final idLabel = rawIdLabel.isNotEmpty ? rawIdLabel : 'ID: -';
+
+          final imageUrl = _pickImageUrl(d.id, data);
+
           return ProfileCardItem(
             id: d.id,
-            title: (data['title'] ?? d.id).toString(),
-            idLabel: (data['idLabel'] ?? '').toString(),
+            title: title,
+            idLabel: idLabel,
+            imageUrl: imageUrl,
             imageAsset: null,
           );
         }).toList();
@@ -398,6 +470,7 @@ class _CardsFromFirestore extends StatelessWidget {
                         cardTitle: card.title,
                         cardIdLabel: card.idLabel,
                         imageAsset: card.imageAsset,
+                        imageUrl: card.imageUrl, // ✅ pass the real URL
                         ownerName: ownerName,
                         ownerDob: ownerDob,
                         ownerCountry: ownerCountry,
@@ -428,6 +501,11 @@ class _CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasNetworkImage =
+        card.imageUrl != null && card.imageUrl!.trim().isNotEmpty;
+    final hasAssetImage =
+        card.imageAsset != null && card.imageAsset!.trim().isNotEmpty;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -442,18 +520,30 @@ class _CardTile extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 1.6,
-              child: card.imageAsset != null
-                  ? Image.asset(card.imageAsset!, fit: BoxFit.cover)
-                  : Container(
-                      color: mycolors.bgPrimary,
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${card.title} Preview',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: mycolors.textPrimary,
-                        ),
-                      ),
-                    ),
+              child: hasNetworkImage
+                  ? Image.network(
+                      card.imageUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: mycolors.bgPrimary,
+                          alignment: Alignment.center,
+                          child: const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        debugPrint('❌ Card preview image failed: $error');
+                        return _fallbackPreview();
+                      },
+                    )
+                  : hasAssetImage
+                      ? Image.asset(card.imageAsset!, fit: BoxFit.cover)
+                      : _fallbackPreview(),
             ),
             Padding(
               padding: const EdgeInsets.all(12),
@@ -478,6 +568,19 @@ class _CardTile extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackPreview() {
+    return Container(
+      color: mycolors.bgPrimary,
+      alignment: Alignment.center,
+      child: Text(
+        '${card.title} Preview',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: mycolors.textPrimary,
         ),
       ),
     );
@@ -523,7 +626,8 @@ class _DocsFromFirestore extends StatelessWidget {
         if (docs.isEmpty) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              padding:
+                  const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
               child: Text(
                 'No documents yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
