@@ -280,6 +280,18 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  void _openCardDetails(UserCard c) {
+    Navigator.pushNamed(
+      context,
+      '/card-detail',
+      arguments: {
+        'cardId': c.id,
+        'title': c.title,
+        'imageUrl': c.imageUrl,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -354,7 +366,8 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pushNamed(context, '/profile'),
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/profile'),
                             child: const Text('See all'),
                           ),
                         ],
@@ -388,7 +401,8 @@ class _HomePageState extends State<HomePage> {
                               imageUrl: c.imageUrl,
                               assetLogo: c.assetLogo,
                               icon: c.icon ?? Icons.credit_card,
-                              onTap: () => Navigator.pushNamed(context, '/profile'),
+                              // ✅ UPDATED: go to Card Details (NOT profile)
+                              onTap: () => _openCardDetails(c),
                             );
                           },
                         ),
@@ -408,7 +422,8 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pushNamed(context, '/services'),
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/services'),
                             child: const Text('See all'),
                           ),
                         ],
@@ -426,13 +441,15 @@ class _HomePageState extends State<HomePage> {
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: recents.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 8),
                             itemBuilder: (context, i) {
                               final s = recents[i];
                               return _ChipButton(
                                 label: s.name,
                                 logoAsset: s.logoAsset,
-                                onTap: () => Navigator.pushNamed(context, '/services'),
+                                onTap: () =>
+                                    Navigator.pushNamed(context, '/services'),
                               );
                             },
                           ),
@@ -482,7 +499,6 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ),
-
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 0,
         onTap: (index) {
@@ -493,16 +509,20 @@ class _HomePageState extends State<HomePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
             case 1:
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
             case 2:
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
             case 3:
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
             case 4:
-              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/profile', (_) => false);
               break;
           }
         },
@@ -548,6 +568,8 @@ class _CardPill extends StatelessWidget {
               Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
+
+                // 🔄 Loading indicator
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
                   return Center(
@@ -564,15 +586,20 @@ class _CardPill extends StatelessWidget {
                     ),
                   );
                 },
-                errorBuilder: (_, __, ___) => Container(
-                  color: scheme.primaryContainer,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    Icons.image_not_supported_outlined,
-                    color: scheme.onPrimaryContainer,
-                    size: 28,
-                  ),
-                ),
+
+                // ❌ Error handler
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('❌ IC image failed to load: $error');
+                  return Container(
+                    color: scheme.primaryContainer,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: scheme.onPrimaryContainer,
+                      size: 28,
+                    ),
+                  );
+                },
               ),
 
               // Soft gradient for readable title
@@ -605,7 +632,8 @@ class _CardPill extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: Colors.white),
                     ],
                   ),
                 ),
@@ -900,17 +928,26 @@ class _EmergencyBottomSheet extends StatelessWidget {
             Divider(height: 1, color: theme.dividerColor),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.phone_outlined, size: 22, color: theme.iconTheme.color),
-              title: Text(phone, style: textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
+              leading: Icon(Icons.phone_outlined,
+                  size: 22, color: theme.iconTheme.color),
+              title: Text(phone,
+                  style:
+                      textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
               onTap: () => _launchPhone(phone),
             ),
             if (url != null && url!.isNotEmpty) ...[
               Divider(height: 1, color: theme.dividerColor),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.public_outlined, size: 22, color: theme.iconTheme.color),
-                title: Text('Visit website', style: textTheme.bodyMedium?.copyWith(color: mycolors.textPrimary)),
-                subtitle: Text(url!, style: textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                leading: Icon(Icons.public_outlined,
+                    size: 22, color: theme.iconTheme.color),
+                title: Text('Visit website',
+                    style: textTheme.bodyMedium
+                        ?.copyWith(color: mycolors.textPrimary)),
+                subtitle: Text(url!,
+                    style: textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
                 onTap: () => _launchUrl(url!),
               ),
             ],

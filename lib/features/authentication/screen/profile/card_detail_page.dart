@@ -1,4 +1,4 @@
-// lib/features/profile/card_detail_page.dart
+// lib/features/authentication/screen/profile/card_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
@@ -13,6 +13,7 @@ class CardDetailPage extends StatelessWidget {
     required this.ownerDob,
     required this.ownerCountry,
     this.imageAsset,
+    this.imageUrl,
   });
 
   final String cardTitle;
@@ -20,14 +21,23 @@ class CardDetailPage extends StatelessWidget {
   final String ownerName;
   final String ownerDob;
   final String ownerCountry;
+
+  /// Local asset fallback (optional)
   final String? imageAsset;
+
+  /// ✅ Firebase Storage download URL (optional)
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     // Later you can replace this with a secure token from backend.
-    final qrData = 'KitaID|$cardTitle|$cardIdLabel|$ownerName|$ownerDob|$ownerCountry';
+    final qrData =
+        'KitaID|$cardTitle|$cardIdLabel|$ownerName|$ownerDob|$ownerCountry';
+
+    final hasNetworkImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
+    final hasAssetImage = imageAsset != null && imageAsset!.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -64,19 +74,56 @@ class CardDetailPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
                 aspectRatio: 1.8,
-                child: imageAsset != null
-                    ? Image.asset(imageAsset!, fit: BoxFit.cover)
-                    : Container(
-                        color: mycolors.bgPrimary,
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$cardTitle Preview',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: mycolors.textPrimary,
-                            fontWeight: FontWeight.w600,
+                child: hasNetworkImage
+                    ? Image.network(
+                        imageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            color: mycolors.bgPrimary,
+                            alignment: Alignment.center,
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                value: progress.expectedTotalBytes == null
+                                    ? null
+                                    : progress.cumulativeBytesLoaded /
+                                        (progress.expectedTotalBytes ?? 1),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('❌ CardDetail image failed: $error');
+                          return Container(
+                            color: mycolors.bgPrimary,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$cardTitle Preview',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: mycolors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : hasAssetImage
+                        ? Image.asset(imageAsset!, fit: BoxFit.cover)
+                        : Container(
+                            color: mycolors.bgPrimary,
+                            alignment: Alignment.center,
+                            child: Text(
+                              '$cardTitle Preview',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: mycolors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
               ),
             ),
 
@@ -174,7 +221,7 @@ class CardDetailPage extends StatelessWidget {
   }
 
   List<_DetailItem> _getDetailsByCardType() {
-    if (cardTitle == 'MyKad') {
+    if (cardTitle == 'MyKad' || cardTitle == 'IC') {
       return [
         _DetailItem('Name', ownerName),
         _DetailItem('Date of Birth', ownerDob),
