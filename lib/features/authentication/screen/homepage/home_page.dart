@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
 
   static const Map<String, String> _serviceLogos = {
     'jpj': 'assets/jpj.png',
-    'immigration': 'assets/immigration.png',
+    'emgs': 'assets/emgs.jpeg',
     'jpn': 'assets/jpn.png',
     'etiqa': 'assets/etiqa.png',
     'mysejahtera': 'assets/mysejahtera.png',
