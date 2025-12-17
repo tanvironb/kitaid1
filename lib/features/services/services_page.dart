@@ -257,7 +257,7 @@ class _ServicesPageState extends State<ServicesPage> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.3,
+                childAspectRatio: 0.95,
               ),
               itemBuilder: (context, i) {
                 final s = others[i];
@@ -407,6 +407,7 @@ class _ServiceCard extends StatelessWidget {
               style: const TextStyle(
                 color: mycolors.textPrimary,
                 fontWeight: FontWeight.w700,
+                fontSize: 15,
               ),
             ),
           ],
