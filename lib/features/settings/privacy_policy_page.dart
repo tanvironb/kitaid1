@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
+// import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
@@ -13,7 +13,8 @@ class PrivacyPolicyPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Privacy Policy'),
+        title: const Text('Privacy Policy',textAlign: TextAlign.center,),
+
         backgroundColor: mycolors.Primary,
         foregroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 0.5,
@@ -206,21 +207,25 @@ class _CardBlock extends StatelessWidget {
 
 Widget _H2(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 8),
-      child: Text(text, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+      child: Text(text, style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700,fontSize: mysizes.fontMd,)),
     );
 
 Widget _H3(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 6),
-      child: Text(text, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+      child: Text(text, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w500,fontSize: mysizes.fontMd,)),
     );
 
 Widget _H4(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 6),
-      child: Text(text, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      child: Text(text, style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700,fontSize: mysizes.fontMd,)),
     );
 
 Widget _P(TextTheme t, String text) =>
-    Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: t.bodyMedium));
+    Padding(padding: const EdgeInsets.only(bottom: 8), 
+    child: 
+    Text(text, 
+    style: t.bodyMedium?.copyWith(
+          fontSize: mysizes.fontSm,)));
 
 class _BulletList extends StatelessWidget {
   const _BulletList(this.textTheme, this.items);
@@ -240,7 +245,11 @@ class _BulletList extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('•  '),
-                    Expanded(child: Text(e, style: textTheme.bodyMedium)),
+                    Expanded(child: Text(e, 
+                    style: textTheme.bodyMedium?.copyWith(
+                      fontSize: mysizes.fontSm,
+
+                    ))),
                   ],
                 ),
               ),
@@ -270,7 +279,9 @@ class _Note extends StatelessWidget {
         children: [
           const Icon(Icons.info_outline),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: textTheme.bodySmall)),
+          Expanded(child: Text(text, style: textTheme.bodySmall?.copyWith(
+            fontSize: mysizes.fontSm
+          ))),
         ],
       ),
     );

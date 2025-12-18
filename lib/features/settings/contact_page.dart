@@ -73,6 +73,7 @@ class ContactPage extends StatelessWidget {
                   style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: mycolors.textPrimary,
+                    fontSize: mysizes.fontMd,
                   ),
                 ),
                 GestureDetector(
@@ -82,6 +83,7 @@ class ContactPage extends StatelessWidget {
                     style: textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: mycolors.Primary,
+                      fontSize: mysizes.fontMd,
                     ),
                   ),
                 ),
@@ -103,6 +105,7 @@ class ContactPage extends StatelessWidget {
                 phoneNumber,
                 style: textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                  fontSize: mysizes.fontMd,
                 ),
               ),
               onTap: () => _launchPhone(phoneNumber),
@@ -122,6 +125,7 @@ class ContactPage extends StatelessWidget {
                 emailAddress,
                 style: textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                  fontSize: mysizes.fontMd,
                 ),
               ),
               onTap: () => _launchEmail(emailAddress),

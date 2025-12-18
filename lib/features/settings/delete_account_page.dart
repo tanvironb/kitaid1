@@ -51,30 +51,50 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
-      context: context,
-      barrierDismissible: !_isDeleting,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirm deletion'),
-        content: const Text(
-          'This action is permanent and cannot be undone. '
-          'Are you sure you want to delete your account?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: _isDeleting ? null : () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: _isDeleting ? null : () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
+  context: context,
+  barrierDismissible: !_isDeleting,
+  builder: (ctx) => AlertDialog(
+    title: Text(
+      'Confirm deletion',
+      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+        fontSize: mysizes.fontMd,
+        fontWeight: FontWeight.w600,
       ),
-    );
+    ),
+    content: Text(
+      'This action is permanent and cannot be undone. '
+      'Are you sure you want to delete your account?',
+      style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+        fontSize: mysizes.fontSm,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: _isDeleting ? null : () => Navigator.pop(ctx, false),
+        child: Text(
+          'Cancel',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+            fontSize: mysizes.fontSm,
+          ),
+        ),
+      ),
+      FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: Theme.of(ctx).colorScheme.error,
+          foregroundColor: Colors.white,
+        ),
+        onPressed: _isDeleting ? null : () => Navigator.pop(ctx, true),
+        child: Text(
+          'Delete',
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+            fontSize: mysizes.fontSm,
+          ),
+        ),
+      ),
+    ],
+  ),
+);
 
     if (ok != true) return;
 
@@ -166,6 +186,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: mycolors.textPrimary,
+                                fontSize: mysizes.fontMd
                               ),
                             ),
                             const SizedBox(height: mysizes.sm),
@@ -173,6 +194,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               'This will remove your account and associated data from KitaID.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: mycolors.textPrimary.withOpacity(0.8),
+                                fontSize: mysizes.fontSm
                               ),
                             ),
                           ],
@@ -189,7 +211,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                     borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
                     side: BorderSide(
                       color: mycolors.borderprimary.withOpacity(0.5),
-                      width: 1,
+                      width: 0.6,
                     ),
                   ),
                   child: Padding(
@@ -214,7 +236,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   title: Text(
                     'I understand this action is permanent.',
                     style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: mycolors.textPrimary),
+                        ?.copyWith(color: mycolors.textPrimary,fontSize: 12,fontWeight: FontWeight.w500),
                   ),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -225,17 +247,31 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       child: OutlinedButton(
                         onPressed: _isDeleting ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
+                          alignment: Alignment.center,
+                          minimumSize: Size.fromHeight(mysizes.btnheight),
                           padding: const EdgeInsets.symmetric(
                               vertical: mysizes.btnheight),
                           side: BorderSide(
-                            color: mycolors.textPrimary.withOpacity(0.3),
+                            color: mycolors.textPrimary.withOpacity(0.3),width: 0.6,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius:
                                 BorderRadius.circular(mysizes.borderRadiusLg),
                           ),
                         ),
-                        child: const Text('Oops, I changed my mind!'),
+                        
+                               child: SizedBox(
+                                      width: double.infinity,          // ✅ forces full button width
+                                      child: Center(
+                                        child: Text(
+                                          'Oops, NO!',
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                            fontSize: mysizes.fontSm,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                       ),
                     ),
                     const SizedBox(width: mysizes.spacebtwitems),
@@ -246,7 +282,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                             : _confirmDelete,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: error,
-                          foregroundColor: Colors.white,
+                          foregroundColor: const Color.fromARGB(255, 255, 255, 255),
+                          
                           padding: const EdgeInsets.symmetric(
                               vertical: mysizes.btnheight),
                           shape: RoundedRectangleBorder(
@@ -261,7 +298,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                                 width: 22,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text('Delete my account!'),
+                            :const  Text('Delete my account!',
+                             style: TextStyle(fontSize: mysizes.fontSm), ),
                       ),
                     ),
                   ],
@@ -315,6 +353,7 @@ class _Bullet extends StatelessWidget {
             text,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: mycolors.textPrimary,
+              fontSize: mysizes.fontSm
             ),
           ),
         ),

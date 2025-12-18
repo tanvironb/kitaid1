@@ -411,8 +411,9 @@ class _HomePageState extends State<HomePage> {
                             child: Text(
                               'Hi ${profile?.displayName?.trim().isNotEmpty == true ? profile!.displayName!.trim() : "there"}',
                               style: text.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 color: mycolors.Primary,
+                                fontSize: mysizes.fontMd,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -429,6 +430,7 @@ class _HomePageState extends State<HomePage> {
                             'My Cards',
                             style: text.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
+                              fontSize: mysizes.fontMd,
                               color: mycolors.textHeading,
                             ),
                           ),
@@ -483,6 +485,7 @@ class _HomePageState extends State<HomePage> {
                             style: text.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: mycolors.textHeading,
+                              fontSize: mysizes.fontMd,
                             ),
                           ),
                           TextButton(
@@ -526,6 +529,7 @@ class _HomePageState extends State<HomePage> {
                         style: text.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: mycolors.textHeading,
+                          fontSize: mysizes.fontMd,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -948,8 +952,9 @@ class _EmergencyBottomSheet extends StatelessWidget {
                 Text(
                   title,
                   style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: mycolors.textPrimary,
+                    fontSize: mysizes.fontMd,
                   ),
                 ),
                 GestureDetector(
@@ -959,6 +964,7 @@ class _EmergencyBottomSheet extends StatelessWidget {
                     style: textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: mycolors.Primary,
+                      fontSize: mysizes.fontMd,
                     ),
                   ),
                 ),
@@ -972,7 +978,8 @@ class _EmergencyBottomSheet extends StatelessWidget {
                   size: 22, color: theme.iconTheme.color),
               title: Text(phone,
                   style: textTheme.bodyMedium
-                      ?.copyWith(color: mycolors.textPrimary)),
+                      ?.copyWith(color: mycolors.textPrimary,
+                      fontSize: mysizes.fontMd,)),
               onTap: () => _launchPhone(phone),
             ),
             if (url != null && url!.isNotEmpty) ...[
@@ -983,9 +990,11 @@ class _EmergencyBottomSheet extends StatelessWidget {
                     size: 22, color: theme.iconTheme.color),
                 title: Text('Visit website',
                     style: textTheme.bodyMedium
-                        ?.copyWith(color: mycolors.textPrimary)),
+                        ?.copyWith(color: mycolors.textPrimary,
+                        fontSize: mysizes.fontMd,)),
                 subtitle: Text(url!,
-                    style: textTheme.bodySmall,
+                     style: textTheme.labelSmall?.copyWith(
+                            fontSize: mysizes.fontSm,),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 onTap: () => _launchUrl(url!),

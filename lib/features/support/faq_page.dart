@@ -318,7 +318,7 @@ Widget _H2(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 8),
       child: Text(
         text,
-        style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700,fontSize: mysizes.fontMd),
       ),
     );
 
@@ -326,13 +326,16 @@ Widget _H3(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         text,
-        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700,fontSize: mysizes.fontMd),
       ),
     );
 
 Widget _P(TextTheme t, String text) => Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(text, style: t.bodyMedium, textAlign: TextAlign.left),
+      child: Text(text, style: t.bodyMedium?.copyWith(
+        fontSize: mysizes.fontSm,
+      ), 
+      textAlign: TextAlign.left),
     );
 
 class _BulletList extends StatelessWidget {
@@ -356,7 +359,9 @@ class _BulletList extends StatelessWidget {
                     Expanded(
                       child: Text(
                         e,
-                        style: textTheme.bodyMedium,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontSize: mysizes.fontSm,
+                        )
                       ),
                     ),
                   ],

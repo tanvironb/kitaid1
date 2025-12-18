@@ -218,7 +218,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         Text(
                           'No notifications found',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontSize: 13, // 🔽 smaller
+                                    fontSize: 12, // 🔽 smaller
                                     fontWeight: FontWeight.w600,
                                   ),
                           

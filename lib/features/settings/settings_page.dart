@@ -126,8 +126,15 @@ class _SettingsPageState extends State<SettingsPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text("Are you sure?"),
-          content: const Text("Do you really want to sign out?"),
+          title:  Text("Are you sure?",
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+        fontSize: mysizes.fontMd,),),
+
+          content:  Text("Do you really want to sign out?",
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+        fontSize: mysizes.fontSm,
+        fontWeight: FontWeight.w500),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -173,11 +180,14 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTileContainer(
             child: _LanguageRow(
               icon: Icons.language,
-              label: t('language'),
+              label: t('language',
+              
+              ),
               lang: _lang,
               onChanged: _onChangeLanguage,
               bmText: t('bm'),
               enText: t('en'),
+            
             ),
           ),
 
@@ -187,6 +197,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             t('account'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontSize: mysizes.fontMd,
                   color: mycolors.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -213,7 +224,8 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.delete_forever_outlined,
             label: t('delete_account'),
             iconColor: mycolors.warningprinmary,
-            labelStyle: TextStyle(color: mycolors.warningprinmary),
+            labelStyle: TextStyle(color: mycolors.warningprinmary,
+            fontSize: mysizes.fontSm,),
             onTap: () => Navigator.pushNamed(context, '/delete-account'),
           ),
 
@@ -225,6 +237,7 @@ class _SettingsPageState extends State<SettingsPage> {
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: mycolors.textPrimary,
                   fontWeight: FontWeight.w700,
+                  fontSize: mysizes.fontMd,
                 ),
           ),
           const SizedBox(height: 8),
@@ -270,7 +283,8 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.logout,
             label: t('sign_out'),
             iconColor: mycolors.warningprinmary,
-            labelStyle: TextStyle(color: mycolors.warningprinmary),
+            labelStyle: TextStyle(color: mycolors.warningprinmary,
+            fontSize: mysizes.fontSm),
             onTap: () => _showSignOutDialog(),
           ),
         ],
@@ -316,6 +330,7 @@ class _LanguageRow extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: mycolors.textPrimary,
                 fontWeight: FontWeight.w600,
+                fontSize: mysizes.fontMd,
               ),
         ),
         const Spacer(),
@@ -366,6 +381,7 @@ class _LangPill extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.w700,
             color: selected ? Colors.white : mycolors.textPrimary,
+            fontSize: mysizes.fontSm,
           ),
         ),
       ),
@@ -438,6 +454,7 @@ class _SettingsTile extends StatelessWidget {
           style: labelStyle ??
               Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: mycolors.textPrimary,
+                    fontSize: mysizes.fontSm,
                   ),
         ),
         trailing: Icon(Icons.chevron_right, color: mycolors.iconColor),
@@ -489,12 +506,15 @@ class _SettingsSwitchTile extends StatelessWidget {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: mycolors.textPrimary,
                 fontWeight: FontWeight.w600,
+                fontSize: mysizes.fontSm,
               ),
         ),
         subtitle: Text(
           subtitle,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: mycolors.textPrimary.withOpacity(0.75),
+                fontWeight: FontWeight.w600,
+                fontSize: mysizes.fontSm,
               ),
         ),
         trailing: loading
