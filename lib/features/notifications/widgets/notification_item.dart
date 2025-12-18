@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kitaid1/utilities/constant/sizes.dart';
 import '../models/app_notification.dart';
 
 /* 
@@ -36,6 +37,7 @@ class NotificationItem extends StatelessWidget {
       : const Color.fromARGB(255, 197, 197, 197); // darker gray for unread
 
     final titleStyle = theme.textTheme.titleMedium?.copyWith(
+      fontSize: mysizes.fontMd,
       fontWeight: data.read ? FontWeight.w600 : FontWeight.w800,
     );
 
@@ -77,7 +79,7 @@ class NotificationItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title (e.g., "JPJ")
+                      // Title 
                       Text(data.title, style: titleStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
 
                       const SizedBox(height: 4),
@@ -88,7 +90,9 @@ class NotificationItem extends StatelessWidget {
                           data.body!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: mysizes.fontSm,
+                                  fontWeight: FontWeight.w400)
                         ),
                     ],
                   ),

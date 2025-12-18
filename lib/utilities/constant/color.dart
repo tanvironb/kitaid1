@@ -8,6 +8,7 @@ class mycolors{
 
 //text color
 static const Color textPrimary = Color.fromARGB(255, 0, 0, 0);
+static const Color textSecondary = Color.fromARGB(255, 129, 129, 129);
 static const Color textHeading =Color.fromARGB(255, 18, 72, 252);
 static const Color textinbox = Color.fromARGB(255, 255, 255, 255);
 static const Color textauthentication = Color.fromARGB(255, 255, 255, 255);

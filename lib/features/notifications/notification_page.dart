@@ -120,40 +120,45 @@ class _NotificationPageState extends State<NotificationPage> {
               children: [
                 // === SEARCH FIELD (rounded) ===
                 TextField(
-                  controller: _searchCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'Search',
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: mycolors.bordersecondary,
-                    ),
-                    filled: true,
-                    fillColor: mycolors.bgPrimary, // white background
-                    hintStyle:
-                        const TextStyle(color: mycolors.textPrimary), // black
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(mysizes.inputfieldRadius),
-                      borderSide: const BorderSide(
-                        color: mycolors.borderprimary,
-                        width: 1.5,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius:
-                          BorderRadius.circular(mysizes.inputfieldRadius),
-                      borderSide: const BorderSide(
-                        color: mycolors.Primary,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  style: const TextStyle(color: mycolors.textPrimary),
-                ),
+  controller: _searchCtrl,
+  style: const TextStyle(
+    color: mycolors.textPrimary,
+    fontSize: 13, // ✅ smaller typed text
+  ),
+  decoration: InputDecoration(
+    hintText: 'Search',
+    hintStyle: const TextStyle(
+      fontSize: 12, // ✅ smaller hint text
+      color: mycolors.textSecondary, // ✅ change hint color
+    ),
+    prefixIcon: const Icon(
+      Icons.search,
+      size: 18, // ✅ smaller icon
+      color: mycolors.textSecondary,
+    ),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 14,
+      vertical: 8, // ✅ reduces height
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(20), // slightly smaller radius
+      borderSide: const BorderSide(
+        color: mycolors.borderprimary,
+        width: 1.2,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(20),
+      borderSide: const BorderSide(
+        color: mycolors.Primary,
+        width: 1.5,
+      ),
+    ),
+  ),
+),
+
 
                 const SizedBox(height: 12),
 
@@ -161,7 +166,10 @@ class _NotificationPageState extends State<NotificationPage> {
                 Row(
                   children: [
                     ChoiceChip(
-                      label: const Text('All'),
+                      label: const Text('All',
+                      style: TextStyle(
+                          fontSize: 12,
+                        ),),
                       selected: !_showUnreadOnly,
                       onSelected: (v) => setState(() => _showUnreadOnly = !v),
                       selectedColor: mycolors.Primary,
@@ -174,7 +182,12 @@ class _NotificationPageState extends State<NotificationPage> {
                     ),
                     const SizedBox(width: 12),
                     ChoiceChip(
-                      label: const Text('Unread'),
+                      label: const Text(
+                        'Unread',
+                        style: TextStyle(
+                          fontSize: 12,
+                        ),
+                        ),
                       selected: _showUnreadOnly,
                       onSelected: (v) => setState(() => _showUnreadOnly = v),
                       selectedColor: mycolors.Primary,
@@ -204,7 +217,11 @@ class _NotificationPageState extends State<NotificationPage> {
                         const SizedBox(height: 12),
                         Text(
                           'No notifications found',
-                          style: theme.textTheme.titleMedium,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: 13, // 🔽 smaller
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                          
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -213,6 +230,7 @@ class _NotificationPageState extends State<NotificationPage> {
                               : 'Try clearing the search or filters.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.hintColor,
+                            fontSize: 12,
                           ),
                           textAlign: TextAlign.center,
                         ),

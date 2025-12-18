@@ -155,25 +155,45 @@ class _ServicesPageState extends State<ServicesPage> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
           TextField(
-            controller: _searchCtrl,
-            style: const TextStyle(color: mycolors.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Search',
-              prefixIcon: const Icon(Icons.search, color: mycolors.textPrimary),
-              filled: true,
-              fillColor: Colors.white,
-              hintStyle: const TextStyle(color: mycolors.textPrimary),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: mycolors.borderprimary, width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: const BorderSide(color: mycolors.Primary, width: 2),
-              ),
-            ),
-          ),
+  controller: _searchCtrl,
+  style: const TextStyle(
+    color: mycolors.textPrimary,
+    fontSize: 13, // ✅ smaller typed text
+  ),
+  decoration: InputDecoration(
+    hintText: 'Search',
+    hintStyle: const TextStyle(
+      fontSize: 12, // ✅ smaller hint text
+      color: mycolors.textSecondary, // ✅ change hint color
+    ),
+    prefixIcon: const Icon(
+      Icons.search,
+      size: 18, // ✅ smaller icon
+      color: mycolors.textSecondary,
+    ),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: 14,
+      vertical: 8, // ✅ reduces height
+    ),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(20), // slightly smaller radius
+      borderSide: const BorderSide(
+        color: mycolors.borderprimary,
+        width: 1.2,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(20),
+      borderSide: const BorderSide(
+        color: mycolors.Primary,
+        width: 1.5,
+      ),
+    ),
+  ),
+),
+
 
           const SizedBox(height: 12),
 

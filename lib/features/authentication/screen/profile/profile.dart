@@ -145,6 +145,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ?.copyWith(
                                         color: mycolors.Primary,
                                         fontWeight: FontWeight.w600,
+                                        fontSize: mysizes.fontMd,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -153,6 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       style:
                                           theme.textTheme.bodyMedium?.copyWith(
                                         color: mycolors.textPrimary,
+                                        fontSize: mysizes.fontSm,
                                       ),
                                     ),
                                     if (phone.isNotEmpty) ...[
@@ -162,6 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                           color: mycolors.textPrimary,
+                                          fontSize: mysizes.fontSm,
                                         ),
                                       ),
                                     ],
@@ -178,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Text(
                                       'Country',
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 11,
+                                        fontSize: mysizes.fontSm,
                                         color: mycolors.textPrimary,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -199,7 +202,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     Text(
                                       'Date of Birth',
                                       style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 11,
+                                        fontSize: mysizes.fontSm,
                                         color: mycolors.textPrimary,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -317,7 +320,7 @@ class _SegmentTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: selected ? mycolors.Primary : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
@@ -326,7 +329,7 @@ class _SegmentTab extends StatelessWidget {
         child: Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600,fontSize: mysizes.fontMd,
             color: selected ? Colors.white : mycolors.textPrimary,
           ),
         ),
@@ -546,26 +549,36 @@ class _CardTile extends StatelessWidget {
                       : _fallbackPreview(),
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.all(10),
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
                     card.title,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: mycolors.textPrimary,
+                      fontSize: mysizes.fontSm,
+                      
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    card.idLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: mycolors.textPrimary,
-                    ),
-                  ),
+                  // const SizedBox(height: 3),
+                  // Text(
+                  //   card.idLabel,
+                  //   // textAlign: TextAlign.center,
+                  //   style: theme.textTheme.bodySmall?.copyWith(
+                  //     color: mycolors.textPrimary,
+                  //     fontSize: mysizes.fontSm,
+                  //   ),
+                  // ),
                 ],
               ),
+
+              )
+              
             ),
           ],
         ),
@@ -632,6 +645,7 @@ class _DocsFromFirestore extends StatelessWidget {
                 'No documents yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                  fontSize: mysizes.fontMd,
                 ),
               ),
             ),
