@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/login/login.dart';
@@ -26,7 +27,9 @@ class kitaid extends StatelessWidget {
     return MaterialApp(
       title: 'KitaID',
       theme: mytheme.LightTheme,
-      home: const Splashscreen(),
+
+      // ✅ Instead of always going Splash -> Login, we go to AuthGate
+      home: const AuthGate(),
 
       // ✅ Normal routes (no-args pages)
       routes: {
@@ -41,6 +44,7 @@ class kitaid extends StatelessWidget {
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/login': (_) => const LoginScreen(),
         '/settings': (_) => const SettingsPage(),
+        '/faq': (_) => const FaqPage(),
       },
 
       // ✅ For pages that need arguments (Card Detail)
@@ -60,12 +64,42 @@ class kitaid extends StatelessWidget {
               ownerName: (args?['ownerName'] ?? '').toString(),
               ownerDob: (args?['ownerDob'] ?? '').toString(),
               ownerCountry: (args?['ownerCountry'] ?? '').toString(),
-              imageUrl: imageUrl, // ✅ only if your CardDetailPage supports it
+              imageUrl: imageUrl,
             ),
           );
         }
 
         return null;
+      },
+    );
+  }
+}
+
+/// ✅ AuthGate decides which screen to show based on Firebase session.
+/// - Always show Splash first
+/// - While Splash is showing, we listen to auth state
+/// - If logged in -> Home
+/// - If not -> Login
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // ✅ Show your splash while Firebase checks saved session
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Splashscreen();
+        }
+
+        // ✅ Logged in -> Home
+        if (snapshot.hasData) {
+          return const HomePage();
+        }
+
+        // ❌ Not logged in -> Login
+        return const LoginScreen();
       },
     );
   }
