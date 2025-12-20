@@ -15,15 +15,16 @@ class VerificationPage extends StatelessWidget {
     return payload != null && payload['type'] == 'kitaid_verify';
   }
 
+  /// ✅ UPDATED: include "Driving License" so it matches your Firestore doc id exactly.
   List<String> _cardDocCandidates(String cardIdFromQr) {
     final t = cardIdFromQr.trim().toLowerCase();
 
     if (t == 'ic' || t == 'mykad') {
       return [
-        'ic',
         'IC',
-        'mykad',
+        'ic',
         'MyKad',
+        'mykad',
         'ic card',
         'mykad card',
       ];
@@ -31,9 +32,12 @@ class VerificationPage extends StatelessWidget {
 
     if (t.contains('driving')) {
       return [
-        'driving_license',
+        'Driving License', // ✅ matches Firestore screenshot doc id
         'driving license',
+        'Driving Licence',
         'driving licence',
+        'driving_license',
+        'driving_licence',
         'license',
         'licence',
       ];
@@ -72,6 +76,89 @@ class VerificationPage extends StatelessWidget {
       if (s.isNotEmpty) return s;
     }
     return fallback;
+  }
+
+  /// ✅ NEW: decide which fields to show per card type
+  /// - IC/MyKad: show DOB, nationality, phone, address (location)
+  /// - Driving License: show class, identity no, validity, nationality, address
+  Map<String, String> _extractCardFields({
+    required String cardIdFromQr,
+    required Map<String, dynamic>? cardData,
+  }) {
+    final t = cardIdFromQr.trim().toLowerCase();
+    final exists = cardData != null;
+
+    if (!exists) {
+      return {
+        'dob': '-',
+        'nationality': '-',
+        'address': '-',
+        'class': '-',
+        'identityNo': '-',
+        'validity': '-',
+      };
+    }
+
+    final data = cardData!;
+
+    // Shared fields (sometimes in different keys)
+    final nationality = _pick(data, ['nationality', 'Nationality'], '-');
+    final address = _pick(
+      data,
+      // ✅ you used location before but your driving license doc uses "address"
+      ['location', 'address', 'Address'],
+      '-',
+    );
+
+    if (t == 'ic' || t == 'mykad') {
+      final dob = _pick(data, ['dob', 'DOB', 'dateOfBirth'], '-');
+      return {
+        'dob': dob,
+        'nationality': nationality,
+        'address': address,
+        'class': '-',
+        'identityNo': '-',
+        'validity': '-',
+      };
+    }
+
+    if (t.contains('driving')) {
+      final licenseClass = _pick(data, ['class', 'Class'], '-');
+      final identityNo = _pick(
+        data,
+        [
+          'identity no',
+          'identity_no',
+          'identityNo',
+          'ic',
+          'IC',
+          'IC No',
+          'icNo',
+          'ic_no',
+        ],
+        '-',
+      );
+      final validity = _pick(data, ['validity', 'Validity'], '-');
+
+      return {
+        'dob': '-', // driving license doc usually doesn't have DOB
+        'nationality': nationality,
+        'address': address,
+        'class': licenseClass,
+        'identityNo': identityNo,
+        'validity': validity,
+      };
+    }
+
+    // Other cards (fallback)
+    return {
+      'dob': _pick(data, ['dob', 'DOB', 'dateOfBirth'], '-'),
+      'nationality': nationality,
+      'address': address,
+      'class': _pick(data, ['class', 'Class'], '-'),
+      'identityNo': _pick(data, ['identity no', 'identityNo', 'ic', 'IC'], '-'),
+      'validity': _pick(data, ['validity', 'Validity'], '-'),
+    };
   }
 
   @override
@@ -129,19 +216,14 @@ class VerificationPage extends StatelessWidget {
                       final cardData = cardSnap.data;
                       final cardExists = cardData != null;
 
-                      // ✅ From card document
-                      final nationality = cardExists
-                          ? _pick(cardData!, ['nationality', 'Nationality'], '-')
-                          : '-';
+                      final extracted = _extractCardFields(
+                        cardIdFromQr: cardId,
+                        cardData: cardData,
+                      );
 
-                      final dob = cardExists
-                          ? _pick(cardData!, ['dob', 'DOB', 'dateOfBirth'], '-')
-                          : '-';
-
-                      // Your field is "location" in Firestore screenshot
-                      final address = cardExists
-                          ? _pick(cardData!, ['location', 'address', 'Address'], '-')
-                          : '-';
+                      final t = cardId.trim().toLowerCase();
+                      final isDriving = t.contains('driving');
+                      final isIc = (t == 'ic' || t == 'mykad');
 
                       return Container(
                         padding: const EdgeInsets.all(16),
@@ -170,11 +252,26 @@ class VerificationPage extends StatelessWidget {
 
                             _row(theme, 'Name:', name),
                             _row(theme, 'IC/Passport:', ic),
-                            _row(theme, 'Date of Birth:', dob),
-                            _row(theme, 'Nationality:', nationality),
-                            _row(theme, 'Phone:', phone),
-                            _row(theme, 'Address:', address),
-                            _row(theme, 'Card Type:', cardId.toUpperCase()),
+
+                            // ✅ Show different info based on card type
+                            if (isIc) ...[
+                              _row(theme, 'Date of Birth:', extracted['dob'] ?? '-'),
+                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                              _row(theme, 'Phone:', phone),
+                              _row(theme, 'Address:', extracted['address'] ?? '-'),
+                            ] else if (isDriving) ...[
+                              _row(theme, 'Identity No:', extracted['identityNo'] ?? '-'),
+                              _row(theme, 'Class:', extracted['class'] ?? '-'),
+                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                              _row(theme, 'Validity:', extracted['validity'] ?? '-'),
+                              _row(theme, 'Address:', extracted['address'] ?? '-'),
+                            ] else ...[
+                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                              _row(theme, 'Phone:', phone),
+                              _row(theme, 'Address:', extracted['address'] ?? '-'),
+                            ],
+
+                            _row(theme, 'Card Type:', cardId),
 
                             const SizedBox(height: 6),
                           ],
@@ -195,7 +292,7 @@ class VerificationPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 130, // ✅ wider so "Nationality" stays in one line
+            width: 130, // ✅ wider so labels stay in one line
             child: Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(

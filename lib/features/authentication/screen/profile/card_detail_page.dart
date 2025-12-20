@@ -131,9 +131,14 @@ class _CardDetailPageState extends State<CardDetailPage> {
   /// ✅ stable card docId stored inside QR
   String _cardDocIdForVerify() {
     final t = widget.cardTitle.trim().toLowerCase();
-    if (t.contains('driving')) return 'driving_license';
-    if (t == 'mykad' || t == 'ic') return 'ic';
-    return t.replaceAll(RegExp(r'\s+'), '_');
+
+    // ✅ Make Driving License QR different from IC QR
+    if (t.contains('driving')) return 'Driving License'; // matches your Firestore doc id
+
+    // ✅ IC/MyKad QR
+    if (t == 'mykad' || t == 'ic') return 'IC';
+
+    return widget.cardTitle.trim();
   }
 
   /// ✅ build secure QR payload (NO personal info)
@@ -167,9 +172,12 @@ class _CardDetailPageState extends State<CardDetailPage> {
       // Try multiple possible docIds (because sometimes naming differs)
       final List<String> docCandidates = t.contains('driving')
           ? [
-              'driving_license',
+              'Driving License', // ✅ matches your screenshot doc id
               'driving license',
+              'Driving Licence',
               'driving licence',
+              'driving_license',
+              'driving_licence',
               'license',
               'licence',
             ]
@@ -518,44 +526,84 @@ class _CardDetailPageState extends State<CardDetailPage> {
     final t = widget.cardTitle.trim().toLowerCase();
     final data = _cardData ?? {};
 
-    String pick(String key, String fallback) {
-      final v = data[key];
-      if (v == null) return fallback;
-      final s = v.toString().trim();
-      return s.isEmpty ? fallback : s;
+    // ✅ helper: try multiple keys, return first non-empty
+    String pickAny(List<String> keys, String fallback) {
+      for (final k in keys) {
+        final v = data[k];
+        if (v == null) continue;
+        final s = v.toString().trim();
+        if (s.isNotEmpty) return s;
+      }
+      return fallback;
     }
 
     if (t == 'mykad' || t == 'ic') {
       return [
-        _DetailItem('Name', pick('name', widget.ownerName)),
-        _DetailItem('Date of Birth', pick('dob', widget.ownerDob)),
-        _DetailItem('Nationality', pick('nationality', widget.ownerCountry)),
-        _DetailItem('MyKad No', pick('mykadNo', _onlyId(widget.cardIdLabel))),
+        _DetailItem('Name', pickAny(['name', 'Name'], widget.ownerName)),
+        _DetailItem('Date of Birth', pickAny(['dob', 'DOB'], widget.ownerDob)),
+        _DetailItem('Nationality',
+            pickAny(['nationality', 'Nationality'], widget.ownerCountry)),
+        _DetailItem('MyKad No',
+            pickAny(['mykadNo', 'mykad_no', 'icNo', 'ic_no'], _onlyId(widget.cardIdLabel))),
       ];
     }
 
+    // ✅ Driving License fields EXACTLY like Firestore screenshot
     if (t.contains('driving')) {
       return [
-        _DetailItem('Name', pick('name', widget.ownerName)),
-        _DetailItem('License Class', pick('licenseClass', 'D / B2')),
-        _DetailItem('Expiry Date', pick('expiryDate', '27/10/2030')),
-        _DetailItem('Address', pick('address', 'Kuala Lumpur, Malaysia')),
-        _DetailItem('License No', pick('licenseNo', _onlyId(widget.cardIdLabel))),
+        _DetailItem('Name', pickAny(['Name', 'name'], widget.ownerName)),
+        _DetailItem(
+          'Address',
+          pickAny(['address', 'Address'], ''),
+        ),
+        _DetailItem(
+          'Class',
+          pickAny(['class', 'Class'], ''),
+        ),
+        _DetailItem(
+          'Identity No',
+          pickAny(
+            [
+              'identity no',
+              'identity_no',
+              'identityNo',
+              'ic',
+              'icNo',
+              'IC',
+              'IC No',
+              'IC_No',
+            ],
+            _onlyId(widget.cardIdLabel),
+          ),
+        ),
+        _DetailItem(
+          'Nationality',
+          pickAny(['nationality', 'Nationality'], widget.ownerCountry),
+        ),
+        _DetailItem(
+          'Validity',
+          pickAny(
+            ['validity', 'Validity', 'validFromTo', 'valid_from_to'],
+            '',
+          ),
+        ),
       ];
     }
 
     return [
-      _DetailItem('Owner', pick('name', widget.ownerName)),
+      _DetailItem('Owner', pickAny(['name', 'Name'], widget.ownerName)),
       _DetailItem('Card Type', widget.cardTitle),
-      _DetailItem('ID', pick('id', _onlyId(widget.cardIdLabel))),
+      _DetailItem('ID', pickAny(['id', 'ID'], _onlyId(widget.cardIdLabel))),
     ];
   }
 
   Widget _detailRow(ThemeData theme, String label, String value) {
+    final displayValue = value.trim().isEmpty ? '-' : value.trim();
+
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => _copyText(value, toastMsg: 'Copied $label'),
-      onLongPress: () => _copyText('$label: $value', toastMsg: 'Copied'),
+      onTap: () => _copyText(displayValue, toastMsg: 'Copied $label'),
+      onLongPress: () => _copyText('$label: $displayValue', toastMsg: 'Copied'),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
@@ -570,7 +618,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
             ),
             Expanded(
               child: Text(
-                value,
+                displayValue,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
                 ),
