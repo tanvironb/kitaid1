@@ -17,7 +17,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfileCardItem {
-  final String id; // Firestore doc id (example: "driving license", "ic", ...)
+  final String id; // Firestore doc id (example: "IC", "driving_license", ...)
   final String title;
   final String idLabel;
 
@@ -52,6 +52,23 @@ class _ProfilePageState extends State<ProfilePage> {
   int _selectedTab = 0;
 
   User? get _user => FirebaseAuth.instance.currentUser;
+
+  bool _looksLikeUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    if (s.isEmpty) return false;
+    return s.startsWith('http://') || s.startsWith('https://');
+  }
+
+  String _pick(Map<String, dynamic> data, List<String> keys, String fallback) {
+    for (final k in keys) {
+      final v = data[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+    return fallback;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,162 +124,228 @@ class _ProfilePageState extends State<ProfilePage> {
                   final ic = (data['IC No'] ?? '').toString().trim();
                   final phone = (data['Phone No'] ?? '').toString().trim();
 
-                  // Optional fields if you add later in Firestore:
-                  final country = (data['Country'] ?? '').toString().trim();
-                  final dob = (data['DOB'] ?? '').toString().trim();
+                  // Old fallback fields (keep)
+                  final fallbackNationality =
+                      (data['Nationality'] ?? data['Country'] ?? '').toString().trim();
+                  final fallbackDob =
+                      (data['dob'] ?? data['DOB'] ?? '').toString().trim();
+
+                  // ✅ profile photo url from Firestore
+                  final firestorePhotoUrl = (data['photoUrl'] ?? '').toString().trim();
+
+                  // ✅ fallback: FirebaseAuth photoURL
+                  final authPhotoUrl = _user?.photoURL?.trim() ?? '';
+
+                  final resolvedPhotoUrl = _looksLikeUrl(firestorePhotoUrl)
+                      ? firestorePhotoUrl
+                      : (_looksLikeUrl(authPhotoUrl) ? authPhotoUrl : '');
 
                   final displayName = name.isNotEmpty ? name : 'User';
                   final displayId = ic.isNotEmpty ? ic : uid;
 
-                  final displayCountry = country.isNotEmpty ? country : '-';
-                  final displayDob = dob.isNotEmpty ? dob : '-';
+                  // ✅ NEW: read DOB + Nationality from cards collection (IC/MyKad doc)
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('Users')
+                        .doc(uid)
+                        .collection('cards')
+                        .snapshots(),
+                    builder: (context, cardSnap) {
+                      final cardDocs = cardSnap.data?.docs ?? [];
 
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.all(mysizes.defaultspace),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ===== HEADER =====
-                        Column(
+                      // find IC/MyKad doc (your screenshot uses doc id "IC")
+                      DocumentSnapshot<Map<String, dynamic>>? icDoc;
+                      for (final d in cardDocs) {
+                        final idLower = d.id.toLowerCase().trim();
+                        if (idLower == 'ic' || idLower == 'mykad' || idLower.contains('mykad')) {
+                          icDoc = d;
+                          break;
+                        }
+                        if (d.id == 'IC') {
+                          icDoc = d; // exact match too
+                          break;
+                        }
+                      }
+
+                      final cardData = icDoc?.data() ?? {};
+
+                      final nationalityFromCard =
+                          _pick(cardData, ['nationality', 'Nationality'], '');
+                      final dobFromCard = _pick(cardData, ['dob', 'DOB', 'dateOfBirth'], '');
+
+                      final displayNationality = (nationalityFromCard.isNotEmpty
+                              ? nationalityFromCard
+                              : fallbackNationality)
+                          .trim();
+                      final displayDob =
+                          (dobFromCard.isNotEmpty ? dobFromCard : fallbackDob).trim();
+
+                      final showNationality =
+                          displayNationality.isNotEmpty ? displayNationality : '-';
+                      final showDob = displayDob.isNotEmpty ? displayDob : '-';
+
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(mysizes.defaultspace),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            // ===== HEADER =====
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const CircleAvatar(
-                                  radius: 28,
-                                  backgroundImage: AssetImage(
-                                    'assets/images/profile_placeholder.png',
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Column(
+                                Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      displayName,
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                        color: mycolors.Primary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: mysizes.fontMd,
-                                      ),
+                                    CircleAvatar(
+                                      radius: 28,
+                                      backgroundColor:
+                                          theme.colorScheme.secondaryContainer,
+                                      backgroundImage: resolvedPhotoUrl.isNotEmpty
+                                          ? NetworkImage(resolvedPhotoUrl)
+                                          : const AssetImage(
+                                              'assets/images/profile_placeholder.png',
+                                            ) as ImageProvider,
+                                      child: resolvedPhotoUrl.isNotEmpty
+                                          ? null
+                                          : Icon(
+                                              Icons.person,
+                                              color: theme.colorScheme
+                                                  .onSecondaryContainer,
+                                              size: 26,
+                                            ),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'IC: $displayId',
-                                      style:
-                                          theme.textTheme.bodyMedium?.copyWith(
-                                        color: mycolors.textPrimary,
-                                        fontSize: mysizes.fontSm,
-                                      ),
-                                    ),
-                                    if (phone.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Phone: $phone',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                          color: mycolors.textPrimary,
-                                          fontSize: mysizes.fontSm,
+                                    const SizedBox(width: 16),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          displayName,
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                            color: mycolors.Primary,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: mysizes.fontMd,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'IC: $displayId',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                            color: mycolors.textPrimary,
+                                            fontSize: mysizes.fontSm,
+                                          ),
+                                        ),
+                                        if (phone.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Phone: $phone',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: mycolors.textPrimary,
+                                              fontSize: mysizes.fontSm,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 22),
+                                Row(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Nationality', // ✅ label matches firebase
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: mysizes.fontSm,
+                                            color: mycolors.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          showNationality,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: 11,
+                                            color: mycolors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 40),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Date of Birth',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: mysizes.fontSm,
+                                            color: mycolors.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          showDob,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: 11,
+                                            color: mycolors.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 22),
+
+                            const SizedBox(height: mysizes.spacebtwsections),
+
+                            // ===== TABS =====
                             Row(
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Country',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: mysizes.fontSm,
-                                        color: mycolors.textPrimary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      displayCountry,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 11,
-                                        color: mycolors.textPrimary,
-                                      ),
-                                    ),
-                                  ],
+                                Expanded(
+                                  child: _SegmentTab(
+                                    label: 'Cards',
+                                    selected: _selectedTab == 0,
+                                    onTap: () =>
+                                        setState(() => _selectedTab = 0),
+                                  ),
                                 ),
-                                const SizedBox(width: 40),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Date of Birth',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: mysizes.fontSm,
-                                        color: mycolors.textPrimary,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      displayDob,
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        fontSize: 11,
-                                        color: mycolors.textPrimary,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: mysizes.spacebtwitems),
+                                Expanded(
+                                  child: _SegmentTab(
+                                    label: 'Docs',
+                                    selected: _selectedTab == 1,
+                                    onTap: () =>
+                                        setState(() => _selectedTab = 1),
+                                  ),
                                 ),
                               ],
                             ),
+
+                            const SizedBox(height: mysizes.spacebtwsections),
+
+                            // ===== CONTENT =====
+                            if (_selectedTab == 0)
+                              _CardsFromFirestore(
+                                uid: uid,
+                                ownerName: displayName,
+                                ownerDob: showDob,
+                                ownerCountry: showNationality, // keep param name, value is nationality
+                              )
+                            else
+                              _DocsFromFirestore(
+                                uid: uid,
+                                ownerName: displayName,
+                                ownerDob: showDob,
+                                ownerCountry: showNationality, // keep param name, value is nationality
+                              ),
                           ],
                         ),
-
-                        const SizedBox(height: mysizes.spacebtwsections),
-
-                        // ===== TABS =====
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _SegmentTab(
-                                label: 'Cards',
-                                selected: _selectedTab == 0,
-                                onTap: () => setState(() => _selectedTab = 0),
-                              ),
-                            ),
-                            const SizedBox(width: mysizes.spacebtwitems),
-                            Expanded(
-                              child: _SegmentTab(
-                                label: 'Docs',
-                                selected: _selectedTab == 1,
-                                onTap: () => setState(() => _selectedTab = 1),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: mysizes.spacebtwsections),
-
-                        // ===== CONTENT =====
-                        if (_selectedTab == 0)
-                          _CardsFromFirestore(
-                            uid: uid,
-                            ownerName: displayName,
-                            ownerDob: displayDob,
-                            ownerCountry: displayCountry,
-                          )
-                        else
-                          _DocsFromFirestore(
-                            uid: uid,
-                            ownerName: displayName,
-                            ownerDob: displayDob,
-                            ownerCountry: displayCountry,
-                          ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),
@@ -279,20 +362,17 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
             case 1:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
               break;
             case 2:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
               break;
             case 3:
               Navigator.pushNamedAndRemoveUntil(
                   context, '/notifications', (_) => false);
               break;
             case 4:
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
               break;
           }
         },
@@ -329,7 +409,8 @@ class _SegmentTab extends StatelessWidget {
         child: Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,fontSize: mysizes.fontMd,
+            fontWeight: FontWeight.w600,
+            fontSize: mysizes.fontMd,
             color: selected ? Colors.white : mycolors.textPrimary,
           ),
         ),
@@ -341,10 +422,6 @@ class _SegmentTab extends StatelessWidget {
 /// ---------------------------
 /// CARDS FROM FIRESTORE
 /// Path: Users/{uid}/cards
-///
-/// ✅ Same idea as Home page:
-/// - Try common keys first (license / ic / mykad / imageUrl / url)
-/// - If still not found, scan ALL fields and pick the first https downloadURL
 /// ---------------------------
 class _CardsFromFirestore extends StatelessWidget {
   const _CardsFromFirestore({
@@ -366,19 +443,22 @@ class _CardsFromFirestore extends StatelessWidget {
     return s.startsWith('http://') || s.startsWith('https://');
   }
 
-  String? _pickImageUrl(String docId, Map<String, dynamic> data) {
+  String? _pickImageUrl(Map<String, dynamic> data) {
     String? asString(dynamic v) => v?.toString().trim();
 
-    // 1) common keys first
     const keys = [
-      'license', // driving license
-      'ic', // IC
-      'mykad', // MyKad
       'imageUrl',
       'url',
       'front',
       'card',
       'photo',
+      'ic',
+      'mykad',
+      'MyKad',
+      'license',
+      'licence',
+      'drivingLicense',
+      'MyKad', // your card doc uses "MyKad"
     ];
 
     for (final k in keys) {
@@ -386,7 +466,6 @@ class _CardsFromFirestore extends StatelessWidget {
       if (_looksLikeUrl(v)) return v!;
     }
 
-    // 2) fallback: scan all fields for any URL
     for (final e in data.entries) {
       final v = asString(e.value);
       if (_looksLikeUrl(v)) return v!;
@@ -414,8 +493,8 @@ class _CardsFromFirestore extends StatelessWidget {
         if (docs.isEmpty) {
           return Center(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              padding: const EdgeInsets.symmetric(
+                  vertical: mysizes.spacebtwsections),
               child: Text(
                 'No cards yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -426,7 +505,6 @@ class _CardsFromFirestore extends StatelessWidget {
           );
         }
 
-        // Optional: sort to show IC first, then Driving License
         docs.sort((a, b) {
           String rank(String id) {
             final x = id.trim().toLowerCase();
@@ -443,11 +521,9 @@ class _CardsFromFirestore extends StatelessWidget {
 
           final title = (data['title'] ?? d.id).toString().trim();
           final rawIdLabel = (data['idLabel'] ?? '').toString().trim();
-
-          // ✅ safety fallback so the UI always has something
           final idLabel = rawIdLabel.isNotEmpty ? rawIdLabel : 'ID: -';
 
-          final imageUrl = _pickImageUrl(d.id, data);
+          final imageUrl = _pickImageUrl(data);
 
           return ProfileCardItem(
             id: d.id,
@@ -473,10 +549,10 @@ class _CardsFromFirestore extends StatelessWidget {
                         cardTitle: card.title,
                         cardIdLabel: card.idLabel,
                         imageAsset: card.imageAsset,
-                        imageUrl: card.imageUrl, // ✅ pass the real URL
+                        imageUrl: card.imageUrl,
                         ownerName: ownerName,
                         ownerDob: ownerDob,
-                        ownerCountry: ownerCountry,
+                        ownerCountry: ownerCountry, // this is nationality value now
                       ),
                     ),
                   );
@@ -553,32 +629,20 @@ class _CardTile extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    card.title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: mycolors.textPrimary,
-                      fontSize: mysizes.fontSm,
-                      
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      card.title,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: mycolors.textPrimary,
+                        fontSize: mysizes.fontSm,
+                      ),
                     ),
-                  ),
-                  // const SizedBox(height: 3),
-                  // Text(
-                  //   card.idLabel,
-                  //   // textAlign: TextAlign.center,
-                  //   style: theme.textTheme.bodySmall?.copyWith(
-                  //     color: mycolors.textPrimary,
-                  //     fontSize: mysizes.fontSm,
-                  //   ),
-                  // ),
-                ],
+                  ],
+                ),
               ),
-
-              )
-              
             ),
           ],
         ),
@@ -603,9 +667,6 @@ class _CardTile extends StatelessWidget {
 /// ---------------------------
 /// DOCS FROM FIRESTORE
 /// Path: Users/{uid}/docs
-/// Fields expected:
-/// - title (String)
-/// - description (String)
 /// ---------------------------
 class _DocsFromFirestore extends StatelessWidget {
   const _DocsFromFirestore({
@@ -639,8 +700,8 @@ class _DocsFromFirestore extends StatelessWidget {
         if (docs.isEmpty) {
           return Center(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
+              padding: const EdgeInsets.symmetric(
+                  vertical: mysizes.spacebtwsections),
               child: Text(
                 'No documents yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(

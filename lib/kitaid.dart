@@ -91,8 +91,8 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
 
-    // ✅ Keep splash visible for minimum 5 seconds
-    Future.delayed(const Duration(seconds: 5), () {
+    // ✅ Keep splash visible for minimum 4 seconds
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showSplash = false);
     });
   }
