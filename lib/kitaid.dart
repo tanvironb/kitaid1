@@ -28,7 +28,7 @@ class kitaid extends StatelessWidget {
       title: 'KitaID',
       theme: mytheme.LightTheme,
 
-      // ✅ Instead of always going Splash -> Login, we go to AuthGate
+      // ✅ AuthGate decides what to show, but Splash will ALWAYS show first (min 2s)
       home: const AuthGate(),
 
       // ✅ Normal routes (no-args pages)
@@ -76,29 +76,42 @@ class kitaid extends StatelessWidget {
 }
 
 /// ✅ AuthGate decides which screen to show based on Firebase session.
-/// - Always show Splash first
-/// - While Splash is showing, we listen to auth state
-/// - If logged in -> Home
-/// - If not -> Login
-class AuthGate extends StatelessWidget {
+/// ✅ Splash ALWAYS shows first for at least 2 seconds
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Keep splash visible for minimum 5 seconds
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _showSplash = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // ✅ Show your splash while Firebase checks saved session
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        // ✅ ALWAYS show splash first (for 2 seconds)
+        if (_showSplash) {
           return const Splashscreen();
         }
 
-        // ✅ Logged in -> Home
+        // ✅ After splash ends, go to the right page
         if (snapshot.hasData) {
           return const HomePage();
         }
 
-        // ❌ Not logged in -> Login
         return const LoginScreen();
       },
     );
