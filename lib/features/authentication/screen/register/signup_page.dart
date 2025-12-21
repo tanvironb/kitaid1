@@ -205,7 +205,8 @@ class _SignUpPageState extends State<SignUpPage> {
                     style: Theme.of(context)
                         .textTheme
                         .headlineLarge
-                        ?.copyWith(color: Colors.white),
+                        ?.copyWith(color: Colors.white,
+                        fontSize: mysizes.fontLg),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 80),
@@ -213,8 +214,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _name,
                     validator: _req,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     decoration: const InputDecoration(
-                      labelText: mytitle.s_name,
+                      hintText: mytitle.s_name,
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -224,10 +229,15 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _ic,
                     validator: _req,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     decoration: const InputDecoration(
-                      labelText: 'IC / Passport No',
+                      hintText: 'IC / Passport No',
                       filled: true,
                       fillColor: Colors.white,
+                      
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -235,8 +245,12 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _email,
                     validator: _emailV,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     decoration: const InputDecoration(
-                      labelText: mytitle.s_email,
+                      hintText: mytitle.s_email,
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -246,12 +260,32 @@ class _SignUpPageState extends State<SignUpPage> {
                   TextFormField(
                     controller: _phone,
                     validator: _phoneV,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
-                      labelText: mytitle.phoneno,
+                      hintText: mytitle.phoneno,
                       filled: true,
                       fillColor: Colors.white,
-                      prefixText: '+60 ',
+                     
+                      prefixIcon: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: mysizes.fontSm),
+                        child: Text(
+                          '+60',
+                          style: TextStyle(
+                            fontSize: mysizes.fontSm,
+                            color: Color.fromARGB(255, 82, 82, 82),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 0,
+                          minHeight: 0,
+                        ),
+
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -260,8 +294,12 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _password,
                     obscureText: _obscurePw,
                     validator: _pwV,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     decoration: InputDecoration(
-                      labelText: mytitle.s_password,
+                      hintText: mytitle.s_password,
                       filled: true,
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
@@ -276,8 +314,12 @@ class _SignUpPageState extends State<SignUpPage> {
                     controller: _confirm,
                     obscureText: _obscureConfirm,
                     validator: _confirmV,
+                    style: TextStyle(
+                      fontSize: mysizes.fontSm,
+                      fontWeight: FontWeight.w400,
+                    ),
                     decoration: InputDecoration(
-                      labelText: mytitle.retypepassword,
+                      hintText: mytitle.retypepassword,
                       filled: true,
                       fillColor: Colors.white,
                       suffixIcon: IconButton(
@@ -293,6 +335,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   Center(
                     child: SizedBox(
                       width: w * 0.3,
+                      
                       child: ElevatedButton(
                         onPressed: _loading ? null : _onNext,
                         child: _loading
@@ -300,8 +343,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
+                                
                               )
-                            : const Text('Next'),
+                            : const Text('Next',
+                            style: TextStyle(
+                              fontSize: mysizes.fontSm,
+                            ),),
                       ),
                     ),
                   ),

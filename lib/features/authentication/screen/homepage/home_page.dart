@@ -449,6 +449,7 @@ class _HomePageState extends State<HomePage> {
                           message: profile == null
                               ? 'Log in & set up your profile to see your cards here.'
                               : 'No cards yet. Add cards in Profile and they’ll show here.',
+                             
                         ),
                       ] else ...[
                         GridView.builder(
@@ -501,6 +502,7 @@ class _HomePageState extends State<HomePage> {
                         _EmptyStrip(
                           icon: Icons.history_rounded,
                           message: 'Browse a service and it’ll appear here.',
+                        
                         )
                       else
                         SizedBox(
@@ -879,7 +881,12 @@ class _EmptyStrip extends StatelessWidget {
         children: [
           Icon(icon, color: scheme.onSurfaceVariant),
           const SizedBox(width: 10),
-          Expanded(child: Text(message, style: text.bodyMedium)),
+          Expanded
+          (child: Text(message, 
+          style: text.bodyMedium?.copyWith(
+            fontSize: mysizes.fontSm,
+            fontWeight: FontWeight.w500
+          ))),
         ],
       ),
     );

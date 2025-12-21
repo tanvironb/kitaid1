@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
+import 'package:kitaid1/utilities/constant/sizes.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -160,14 +161,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Scaffold(
       backgroundColor: mycolors.Primary,
       body: SafeArea(
+        
         child: Stack(
+          
           children: [
             // Top-right back arrow
             Positioned(
               right: 16,
               top: 12,
               child: Material(
+                
                 color: Colors.white,
+                
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -189,8 +194,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                         letterSpacing: 4,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        fontSize: mysizes.fontLg,
                       ),
                 ),
                 const Spacer(),
@@ -204,6 +209,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         TextFormField(
                           controller: _currentCtrl,
                           obscureText: _hideCurrent,
+                          style: TextStyle(
+                            fontSize: mysizes.fontSm,
+                          ),
                           validator: _validateCurrent,
                           decoration: _pillField('Current Password').copyWith(
                             suffixIcon: IconButton(
@@ -221,6 +229,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         TextFormField(
                           controller: _newCtrl,
                           obscureText: _hideNew,
+                          style: TextStyle(
+                            fontSize: mysizes.fontSm,
+                          ),
                           validator: _validateNew,
                           decoration: _pillField('New Password').copyWith(
                             suffixIcon: IconButton(
@@ -237,6 +248,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         TextFormField(
                           controller: _confirmCtrl,
                           obscureText: _hideConfirm,
+                          style: TextStyle(
+                            fontSize: mysizes.fontSm,
+                          ),
                           validator: _validateConfirm,
                           decoration: _pillField('Re-enter New Password').copyWith(
                             suffixIcon: IconButton(
@@ -274,7 +288,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Change', style: TextStyle(fontSize: 16)),
+                          : const Text('Change', style: TextStyle(fontSize: mysizes.fontSm)),
                     ),
                   ),
                 ),

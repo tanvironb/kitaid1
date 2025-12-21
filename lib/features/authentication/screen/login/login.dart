@@ -435,6 +435,7 @@ class _LoginScreenState extends State<LoginScreen>
                                       'Login',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
+                                        fontSize: mysizes.fontSm,
                                         letterSpacing: 1.2,
                                       ),
                                     ),
@@ -498,7 +499,7 @@ class _LoginScreenState extends State<LoginScreen>
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.black.withOpacity(0.55),
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                           ],

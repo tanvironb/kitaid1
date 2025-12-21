@@ -118,7 +118,8 @@ class _ChatBotPageState extends State<ChatBotPage> {
           style: theme.textTheme.titleMedium?.copyWith(
             color: theme.colorScheme.onPrimary,
             letterSpacing: 2,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
+            fontSize: mysizes.fontLg
           ),
         ),
       ),
@@ -154,9 +155,11 @@ class _ChatBotPageState extends State<ChatBotPage> {
                       controller: _textCtrl,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: mycolors.textPrimary,
+                        fontSize: mysizes.fontSm
                       ),
                       decoration: const InputDecoration(
                         hintText: 'Write your message here',
+                        
                         isDense: true,
                         border: InputBorder.none,
                       ),

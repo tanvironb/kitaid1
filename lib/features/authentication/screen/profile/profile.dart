@@ -420,6 +420,7 @@ class _CardsFromFirestore extends StatelessWidget {
                 'No cards yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                  fontSize: mysizes.fontMd
                 ),
               ),
             ),
