@@ -18,6 +18,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   bool _acknowledged = false;
   bool _isDeleting = false;
 
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   Future<void> _deleteCollectionInBatches({
     required CollectionReference<Map<String, dynamic>> colRef,
     int batchSize = 300,
@@ -38,90 +43,226 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     final userDoc = FirebaseFirestore.instance.collection('Users').doc(uid);
 
     // delete subcollections first (cards, docs). Add more if you create later.
-    await _deleteCollectionInBatches(
-      colRef: userDoc.collection('cards'),
-    );
-    await _deleteCollectionInBatches(
-      colRef: userDoc.collection('docs'),
-    );
+    await _deleteCollectionInBatches(colRef: userDoc.collection('cards'));
+    await _deleteCollectionInBatches(colRef: userDoc.collection('docs'));
 
     // finally delete the user main doc
     await userDoc.delete();
   }
 
+  /// ✅ Ask user password, then reauthenticate.
+  /// Required because Firebase often blocks delete with "requires-recent-login".
+  Future<bool> _reauthenticateUser(User user) async {
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      _snack('Cannot re-authenticate: missing email. Please login again.');
+      return false;
+    }
+
+    final pwController = TextEditingController();
+    bool hide = true;
+    bool ok = false;
+
+    ok = await showDialog<bool>(
+          context: context,
+          barrierDismissible: !_isDeleting,
+          builder: (ctx) {
+            return StatefulBuilder(
+              builder: (ctx, setLocal) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: Text(
+                    'Re-login required',
+                    style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                          fontSize: mysizes.fontMd,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'For security, please enter your password to confirm account deletion.',
+                        style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                              fontSize: mysizes.fontSm,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: pwController,
+                        obscureText: hide,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          labelStyle: TextStyle(fontSize: mysizes.fontSm),
+                          suffixIcon: IconButton(
+                            onPressed: () => setLocal(() => hide = !hide),
+                            icon: Icon(
+                              hide
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(
+                        'Cancel',
+                        style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                              fontSize: mysizes.fontSm,
+                            ),
+                      ),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(ctx).colorScheme.error,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        if (pwController.text.trim().isEmpty) return;
+                        Navigator.pop(ctx, true);
+                      },
+                      child: Text(
+                        'Confirm',
+                        style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                              fontSize: mysizes.fontSm,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ) ??
+        false;
+
+    if (!ok) return false;
+
+    try {
+      final cred = EmailAuthProvider.credential(
+        email: email,
+        password: pwController.text.trim(),
+      );
+      await user.reauthenticateWithCredential(cred);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      final msg = switch (e.code) {
+        'wrong-password' => 'Wrong password.',
+        'invalid-credential' => 'Wrong password.',
+        _ => e.message ?? 'Re-authentication failed.',
+      };
+      _snack(msg);
+      return false;
+    } catch (e) {
+      _snack('Re-authentication failed: $e');
+      return false;
+    } finally {
+      pwController.dispose();
+    }
+  }
+
+  Future<void> _performDeleteFlow({required bool allowReauth}) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('No logged-in user. Please login again.');
+    }
+
+    final uid = user.uid;
+
+    // 1) Delete Firestore data
+    await _deleteUserDataEverywhere(uid);
+
+    // 2) Delete Auth user (may require re-auth)
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        if (!allowReauth) rethrow;
+
+        final reauthed = await _reauthenticateUser(user);
+        if (!reauthed) {
+          throw FirebaseAuthException(
+            code: 'requires-recent-login',
+            message: 'Re-login cancelled or failed.',
+          );
+        }
+
+        // Retry delete after reauth
+        await user.delete();
+      } else {
+        rethrow;
+      }
+    }
+
+    // 3) Sign out (safe cleanup)
+    await FirebaseAuth.instance.signOut();
+  }
+
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
-  context: context,
-  barrierDismissible: !_isDeleting,
-  builder: (ctx) => AlertDialog(
-    title: Text(
-      'Confirm deletion',
-      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-        fontSize: mysizes.fontMd,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-    content: Text(
-      'This action is permanent and cannot be undone. '
-      'Are you sure you want to delete your account?',
-      style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-        fontSize: mysizes.fontSm,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: _isDeleting ? null : () => Navigator.pop(ctx, false),
-        child: Text(
-          'Cancel',
-          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-            fontSize: mysizes.fontSm,
+          context: context,
+          barrierDismissible: !_isDeleting,
+          builder: (ctx) => AlertDialog(
+            title: Text(
+              'Confirm deletion',
+              style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    fontSize: mysizes.fontMd,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+            content: Text(
+              'This action is permanent and cannot be undone. '
+              'Are you sure you want to delete your account?',
+              style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                    fontSize: mysizes.fontSm,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _isDeleting ? null : () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Cancel',
+                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                        fontSize: mysizes.fontSm,
+                      ),
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: _isDeleting ? null : () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Delete',
+                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                        fontSize: mysizes.fontSm,
+                      ),
+                ),
+              ),
+            ],
           ),
-        ),
-      ),
-      FilledButton(
-        style: FilledButton.styleFrom(
-          backgroundColor: Theme.of(ctx).colorScheme.error,
-          foregroundColor: Colors.white,
-        ),
-        onPressed: _isDeleting ? null : () => Navigator.pop(ctx, true),
-        child: Text(
-          'Delete',
-          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-            fontSize: mysizes.fontSm,
-          ),
-        ),
-      ),
-    ],
-  ),
-);
+        ) ??
+        false;
 
     if (ok != true) return;
 
     setState(() => _isDeleting = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('No logged-in user. Please login again.');
-      }
-
-      final uid = user.uid;
-
-      // 1) Delete Firestore data
-      await _deleteUserDataEverywhere(uid);
-
-      // 2) Delete Auth user
-      await user.delete();
-
-      // 3) Sign out (safe cleanup)
-      await FirebaseAuth.instance.signOut();
+      await _performDeleteFlow(allowReauth: true);
 
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your account has been deleted.')),
-      );
+      _snack('Your account has been deleted.');
 
       // Go to login page and clear stack
       Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
@@ -129,21 +270,17 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       if (!mounted) return;
       setState(() => _isDeleting = false);
 
-      // Most common:
-      // requires-recent-login => user must re-login then delete again
       final msg = switch (e.code) {
         'requires-recent-login' =>
-          'For security, please login again then try deleting your account.',
+          'For security, please login again and try deleting your account.',
         _ => e.message ?? 'Delete failed.',
       };
 
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      _snack(msg);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isDeleting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Delete failed: $e')),
-      );
+      _snack('Delete failed: $e');
     }
   }
 
@@ -186,7 +323,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               style: theme.textTheme.titleLarge?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: mycolors.textPrimary,
-                                fontSize: mysizes.fontMd
+                                fontSize: mysizes.fontMd,
                               ),
                             ),
                             const SizedBox(height: mysizes.sm),
@@ -194,7 +331,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                               'This will remove your account and associated data from KitaID.',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: mycolors.textPrimary.withOpacity(0.8),
-                                fontSize: mysizes.fontSm
+                                fontSize: mysizes.fontSm,
                               ),
                             ),
                           ],
@@ -235,8 +372,11 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                   controlAffinity: ListTileControlAffinity.leading,
                   title: Text(
                     'I understand this action is permanent.',
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: mycolors.textPrimary,fontSize: 12,fontWeight: FontWeight.w500),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: mycolors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -250,45 +390,42 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                           alignment: Alignment.center,
                           minimumSize: Size.fromHeight(mysizes.btnheight),
                           padding: const EdgeInsets.symmetric(
-                              vertical: mysizes.btnheight),
+                            vertical: mysizes.btnheight,
+                          ),
                           side: BorderSide(
-                            color: mycolors.textPrimary.withOpacity(0.3),width: 0.6,
+                            color: mycolors.textPrimary.withOpacity(0.3),
+                            width: 0.6,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(mysizes.borderRadiusLg),
+                            borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
                           ),
                         ),
-                        
-                               child: SizedBox(
-                                      width: double.infinity,          // ✅ forces full button width
-                                      child: Center(
-                                        child: Text(
-                                          'Oops, NO!',
-                                          textAlign: TextAlign.center,
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                            fontSize: mysizes.fontSm,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Center(
+                            child: Text(
+                              'Oops, NO!',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontSize: mysizes.fontSm,
+                                  ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: mysizes.spacebtwitems),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: (!_acknowledged || _isDeleting)
-                            ? null
-                            : _confirmDelete,
+                        onPressed: (!_acknowledged || _isDeleting) ? null : _confirmDelete,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: error,
-                          foregroundColor: const Color.fromARGB(255, 255, 255, 255),
-                          
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                              vertical: mysizes.btnheight),
+                            vertical: mysizes.btnheight,
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(mysizes.borderRadiusLg),
+                            borderRadius: BorderRadius.circular(mysizes.borderRadiusLg),
                           ),
                           elevation: 0,
                         ),
@@ -298,8 +435,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                                 width: 22,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            :const  Text('Delete my account!',
-                             style: TextStyle(fontSize: mysizes.fontSm), ),
+                            : const Text(
+                                'Delete my account!',
+                                style: TextStyle(fontSize: mysizes.fontSm),
+                              ),
                       ),
                     ),
                   ],
@@ -353,7 +492,7 @@ class _Bullet extends StatelessWidget {
             text,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: mycolors.textPrimary,
-              fontSize: mysizes.fontSm
+              fontSize: mysizes.fontSm,
             ),
           ),
         ),

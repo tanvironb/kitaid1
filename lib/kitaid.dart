@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/login/login.dart';
@@ -26,7 +27,9 @@ class kitaid extends StatelessWidget {
     return MaterialApp(
       title: 'KitaID',
       theme: mytheme.LightTheme,
-      home: const Splashscreen(),
+
+      // ✅ AuthGate decides what to show, but Splash will ALWAYS show first (min 2s)
+      home: const AuthGate(),
 
       // ✅ Normal routes (no-args pages)
       routes: {
@@ -41,6 +44,7 @@ class kitaid extends StatelessWidget {
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/login': (_) => const LoginScreen(),
         '/settings': (_) => const SettingsPage(),
+        '/faq': (_) => const FaqPage(),
       },
 
       // ✅ For pages that need arguments (Card Detail)
@@ -60,12 +64,55 @@ class kitaid extends StatelessWidget {
               ownerName: (args?['ownerName'] ?? '').toString(),
               ownerDob: (args?['ownerDob'] ?? '').toString(),
               ownerCountry: (args?['ownerCountry'] ?? '').toString(),
-              imageUrl: imageUrl, // ✅ only if your CardDetailPage supports it
+              imageUrl: imageUrl,
             ),
           );
         }
 
         return null;
+      },
+    );
+  }
+}
+
+/// ✅ AuthGate decides which screen to show based on Firebase session.
+/// ✅ Splash ALWAYS shows first for at least 2 seconds
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // ✅ Keep splash visible for minimum 4 seconds
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showSplash = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        // ✅ ALWAYS show splash first (for 2 seconds)
+        if (_showSplash) {
+          return const Splashscreen();
+        }
+
+        // ✅ After splash ends, go to the right page
+        if (snapshot.hasData) {
+          return const HomePage();
+        }
+
+        return const LoginScreen();
       },
     );
   }

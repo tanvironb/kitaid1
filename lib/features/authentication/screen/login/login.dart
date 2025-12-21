@@ -2,8 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
+
 import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
 import 'package:kitaid1/features/services/biometric_auth_service.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
@@ -75,10 +75,7 @@ class _LoginScreenState extends State<LoginScreen>
   ///  "050101-10-1010" -> "050101101010"
   ///  "A02591787" -> "A02591787"
   String _normalizeLoginId(String input) {
-    return input
-        .trim()
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    return input.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
 
   /// ✅ Convert to FirebaseAuth email (must match signup)
@@ -179,10 +176,9 @@ class _LoginScreenState extends State<LoginScreen>
       if (!mounted) return;
       setState(() => _loggingIn = false);
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
+      // ✅ IMPORTANT CHANGE:
+      // Use your app routes instead of pushing Home directly
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() => _loggingIn = false);
@@ -235,10 +231,10 @@ class _LoginScreenState extends State<LoginScreen>
     // ✅ Load recents for biometric login too
     await _loadRecentsAfterLogin(user.uid);
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
+    if (!mounted) return;
+
+    // ✅ Same routing approach
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   @override
@@ -367,7 +363,6 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                           ),
                           const SizedBox(height: 16),
-
                           TextFormField(
                             controller: _icController,
                             style: TextStyle(
@@ -383,7 +378,6 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 14),
-
                           TextFormField(
                             controller: _pwController,
                             obscureText: _hidePassword,
@@ -394,8 +388,8 @@ class _LoginScreenState extends State<LoginScreen>
                             decoration: _pillDecoration(
                               hint: mytitle.password,
                               suffix: IconButton(
-                                onPressed: () =>
-                                    setState(() => _hidePassword = !_hidePassword),
+                                onPressed: () => setState(
+                                    () => _hidePassword = !_hidePassword),
                                 icon: Icon(
                                   _hidePassword
                                       ? Icons.visibility_outlined
@@ -405,9 +399,7 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                           ),
-
                           const SizedBox(height: 18),
-
                           SizedBox(
                             width: size.width * 0.35,
                             child: ElevatedButton(
@@ -441,7 +433,6 @@ class _LoginScreenState extends State<LoginScreen>
                                     ),
                             ),
                           ),
-
                           if (showBiometricButton) ...[
                             const SizedBox(height: 10),
                             IconButton(
@@ -459,9 +450,7 @@ class _LoginScreenState extends State<LoginScreen>
                               tooltip: 'Login with biometrics',
                             ),
                           ],
-
                           const SizedBox(height: 16),
-
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -491,7 +480,6 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ],
                           ),
-
                           if (_bioSupported && !_bioEnabled) ...[
                             const SizedBox(height: 10),
                             Text(

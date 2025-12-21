@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:kitaid1/features/services/biometric_auth_service.dart';
 import 'package:kitaid1/features/settings/contact_page.dart';
 import 'package:kitaid1/features/settings/privacy_policy_page.dart';
@@ -51,7 +52,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
     // if turning ON -> verify with biometric once
     if (value) {
-      final ok = await bio.authenticate(reason: 'Enable biometric login for KitaID');
+      final ok =
+          await bio.authenticate(reason: 'Enable biometric login for KitaID');
       if (!ok) {
         if (!mounted) return;
         setState(() => _bioLoading = false);
@@ -70,7 +72,8 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(value ? 'Biometric login enabled' : 'Biometric login disabled'),
+          content:
+              Text(value ? 'Biometric login enabled' : 'Biometric login disabled'),
         ),
       );
     }
@@ -106,8 +109,9 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'biometric':
         return bm ? 'Log Masuk Biometrik' : 'Biometric Login';
       case 'biometric_desc':
-        return bm ? 'Guna cap jari / Face ID untuk log masuk'
-                  : 'Use fingerprint / Face ID to login';
+        return bm
+            ? 'Guna cap jari / Face ID untuk log masuk'
+            : 'Use fingerprint / Face ID to login';
       default:
         return key;
     }
@@ -115,6 +119,27 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _onChangeLanguage(AppLanguage lang) {
     setState(() => _lang = lang);
+  }
+
+  /// ✅ REAL SIGN OUT: Firebase session will be cleared.
+  Future<void> _signOut() async {
+    try {
+      // (Optional) If you want, you can disable biometric toggle on signout
+      // so next user is not confused.
+      await BiometricAuthService.instance.setEnabled(false);
+
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+
+      // ✅ Clear nav stack and go to login
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign out failed: $e')),
+      );
+    }
   }
 
   void _showSignOutDialog() {
@@ -126,27 +151,32 @@ class _SettingsPageState extends State<SettingsPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title:  Text("Are you sure?",
-          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-        fontSize: mysizes.fontMd,),),
-
-          content:  Text("Do you really want to sign out?",
-          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-        fontSize: mysizes.fontSm,
-        fontWeight: FontWeight.w500),
+          title: Text(
+            "Are you sure?",
+            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                  fontSize: mysizes.fontMd,
+                ),
+          ),
+          content: Text(
+            "Do you really want to sign out?",
+            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                  fontSize: mysizes.fontSm,
+                  fontWeight: FontWeight.w500,
+                ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text(
                 "No",
-                style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                style:
+                    TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
               ),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(ctx).pop();
-                Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              onPressed: () async {
+                Navigator.of(ctx).pop(); // close dialog
+                await _signOut(); // ✅ REAL sign out
               },
               child: const Text(
                 "Yes",
@@ -166,13 +196,13 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         title: Text(
           t('title'),
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w600),
         ),
         backgroundColor: mycolors.Primary,
         elevation: 0,
         centerTitle: true,
       ),
-
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: [
@@ -180,14 +210,11 @@ class _SettingsPageState extends State<SettingsPage> {
           _SettingsTileContainer(
             child: _LanguageRow(
               icon: Icons.language,
-              label: t('language',
-              
-              ),
+              label: t('language'),
               lang: _lang,
               onChanged: _onChangeLanguage,
               bmText: t('bm'),
               enText: t('en'),
-            
             ),
           ),
 
@@ -197,7 +224,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text(
             t('account'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontSize: mysizes.fontMd,
+                  fontSize: mysizes.fontMd,
                   color: mycolors.textPrimary,
                   fontWeight: FontWeight.w700,
                 ),
@@ -224,8 +251,10 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.delete_forever_outlined,
             label: t('delete_account'),
             iconColor: mycolors.warningprinmary,
-            labelStyle: TextStyle(color: mycolors.warningprinmary,
-            fontSize: mysizes.fontSm,),
+            labelStyle: TextStyle(
+              color: mycolors.warningprinmary,
+              fontSize: mysizes.fontSm,
+            ),
             onTap: () => Navigator.pushNamed(context, '/delete-account'),
           ),
 
@@ -283,18 +312,14 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.logout,
             label: t('sign_out'),
             iconColor: mycolors.warningprinmary,
-            labelStyle: TextStyle(color: mycolors.warningprinmary,
-            fontSize: mysizes.fontSm),
-            onTap: () => _showSignOutDialog(),
+            labelStyle: TextStyle(
+              color: mycolors.warningprinmary,
+              fontSize: mysizes.fontSm,
+            ),
+            onTap: _showSignOutDialog,
           ),
         ],
       ),
-
-      // (Optional) If you want bottom nav also in settings, uncomment:
-      // bottomNavigationBar: KitaBottomNav(
-      //   currentIndex: 4,
-      //   onTap: (index) { ... },
-      // ),
     );
   }
 }
