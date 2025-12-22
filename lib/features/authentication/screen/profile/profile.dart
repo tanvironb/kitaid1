@@ -706,14 +706,12 @@ class _DocsFromFirestore extends StatelessWidget {
       'coverUrl',
     ];
 
-    for (final k in preferredKeys) {
-      final v = data[k]?.toString().trim();
-      if (_looksLikeUrl(v)) return v!;
-    }
+    final direct = data['Passport']?.toString().trim();
+      if (_looksLikeUrl(direct)) return direct!;
 
     // fallback: any url-like field
-    for (final e in data.entries) {
-      final v = e.value?.toString().trim();
+    for (final k in preferredKeys) {
+      final v = data[k]?.toString().trim();
       if (_looksLikeUrl(v)) return v!;
     }
 
@@ -776,13 +774,13 @@ class _DocsFromFirestore extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => DocDetailPage(
+                        uid: uid, 
+                        docId: doc.id,                 
                         docTitle: doc.title,
-                        docDescription:
-                            doc.description.isEmpty ? 'Active' : doc.description,
+                        docDescription: doc.description.isEmpty ? 'Active' : doc.description,
                         ownerName: ownerName,
                         ownerDob: ownerDob,
                         ownerCountry: ownerCountry,
-                        previewAsset: null,
                       ),
                     ),
                   );

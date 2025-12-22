@@ -15,7 +15,7 @@ class DocDetailPage extends StatefulWidget {
     required this.ownerName,
     required this.ownerDob,
     required this.ownerCountry,
-    this.previewAsset,
+    this.previewAsset, required String uid, required String docId,
   });
 
   final String docTitle;
@@ -236,6 +236,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: mycolors.Primary,
                     fontWeight: FontWeight.w700,
+                    fontSize: mysizes.fontSm,
                   ),
                 ),
               ),
@@ -249,7 +250,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: AspectRatio(
-                    aspectRatio: 1.25,
+                    aspectRatio: 1.2,
                     child: _buildPreview(theme, previewUrl),
                   ),
                 ),
@@ -320,6 +321,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: mycolors.Primary,
                         fontWeight: FontWeight.w700,
+                        fontSize: mysizes.fontMd,
                       ),
                     ),
                     TextButton.icon(
@@ -422,6 +424,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: mycolors.textPrimary,
+                fontSize: mysizes.fontMd,
               ),
             ),
             Expanded(
@@ -429,6 +432,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                 displayValue,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                   fontSize: mysizes.fontMd,
+                   fontWeight: FontWeight.w500
                 ),
               ),
             ),
