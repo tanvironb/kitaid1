@@ -1,6 +1,5 @@
-// lib/features/profile/doc_detail_page.dart
+// lib/features/authentication/screen/profile/doc_detail_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
@@ -10,13 +9,18 @@ import 'package:qr_flutter/qr_flutter.dart';
 class DocDetailPage extends StatefulWidget {
   const DocDetailPage({
     super.key,
+    required this.uid, // ✅ MUST be passed from profile page
+    required this.docId, // ✅ doc id inside Users/{uid}/docs/{docId} (e.g. "Passport")
     required this.docTitle,
     required this.docDescription,
     required this.ownerName,
     required this.ownerDob,
     required this.ownerCountry,
-    this.previewAsset, required String uid, required String docId,
+    this.previewAsset,
   });
+
+  final String uid;
+  final String docId;
 
   final String docTitle;
   final String docDescription;
@@ -39,7 +43,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
   bool _favBusy = false;
 
   String _favIdFor(String title) {
-    final key = title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    final key =
+        title.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     return 'doc_$key';
   }
 
@@ -64,24 +69,30 @@ class _DocDetailPageState extends State<DocDetailPage> {
   // -----------------------
   // Value helpers
   // -----------------------
-  static String _stringify(dynamic v) {
-    if (v == null) return '';
-    return v.toString().trim();
+  static String _stringify(dynamic v) => (v ?? '').toString().trim();
+
+  static bool _looksLikeUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    return s.startsWith('http://') || s.startsWith('https://');
   }
 
-  static String? _pickString(Map<String, dynamic> map, List<String> keys) {
-    for (final k in keys) {
-      final v = map[k];
-      if (v is String && v.trim().isNotEmpty) return v.trim();
+  /// ✅ Loose matcher: removes spaces/underscores/colons etc.
+  /// So these all match the same key:
+  /// "country code", "country_code", "countrycode", "country code:"
+  static String _getLoose(Map<String, dynamic> map, List<String> keys) {
+    String norm(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    final normMap = <String, dynamic>{};
+    for (final e in map.entries) {
+      normMap[norm(e.key.toString())] = e.value;
     }
-    return null;
-  }
 
-  static String _pickAnyToString(Map<String, dynamic> map, List<String> keys) {
     for (final k in keys) {
-      final v = map[k];
-      final s = _stringify(v);
-      if (s.isNotEmpty) return s;
+      final v = normMap[norm(k)];
+      final out = _stringify(v);
+      if (out.isNotEmpty) return out;
     }
     return '';
   }
@@ -90,14 +101,14 @@ class _DocDetailPageState extends State<DocDetailPage> {
   // Load data
   // -----------------------
   Future<_DocPayload> _load() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
-      return const _DocPayload(previewUrl: null, userData: {}, passportData: {});
-    }
+    final uid = widget.uid;
 
     // favorite state
-    final favRef =
-        _db.collection('Users').doc(uid).collection('favorites').doc(_favIdFor(widget.docTitle));
+    final favRef = _db
+        .collection('Users')
+        .doc(uid)
+        .collection('favorites')
+        .doc(_favIdFor(widget.docTitle));
     final favSnap = await favRef.get();
     _isFavorite = favSnap.exists;
 
@@ -105,28 +116,31 @@ class _DocDetailPageState extends State<DocDetailPage> {
     final userSnap = await _db.collection('Users').doc(uid).get();
     final user = userSnap.data() ?? {};
 
-    // passport doc data (Users/{uid}/docs/Passport)
-    Map<String, dynamic> passportData = {};
-    String? previewUrl;
+    // doc data (Users/{uid}/docs/{docId})
+    final docSnap = await _db
+        .collection('Users')
+        .doc(uid)
+        .collection('docs')
+        .doc(widget.docId)
+        .get();
 
-    if (_isPassport(widget.docTitle)) {
-      final passSnap = await _db.collection('Users').doc(uid).collection('docs').doc('Passport').get();
-      passportData = passSnap.data() ?? {};
+    final docData = docSnap.data() ?? {};
 
-      // cover url is stored in field "Passport" (exactly like your screenshot)
-      previewUrl = _pickString(passportData, const [
-        'Passport',
-        'passport',
-        'imageUrl',
-        'url',
-        'coverUrl',
-      ]);
-    }
+    // preview url: cover url stored in field "Passport" (per your screenshot)
+    // but we also support variants safely.
+    final previewUrl = _getLoose(docData, const [
+      'Passport',
+      'passport',
+      'imageUrl',
+      'url',
+      'coverUrl',
+      'previewUrl',
+    ]);
 
     return _DocPayload(
-      previewUrl: previewUrl,
+      previewUrl: _looksLikeUrl(previewUrl) ? previewUrl : null,
       userData: user,
-      passportData: passportData,
+      docData: docData,
     );
   }
 
@@ -136,14 +150,17 @@ class _DocDetailPageState extends State<DocDetailPage> {
     required String ownerCountry,
     required String? previewUrl,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || _favBusy) return;
+    final uid = widget.uid;
+    if (_favBusy) return;
 
     setState(() => _favBusy = true);
 
     try {
-      final favRef =
-          _db.collection('Users').doc(uid).collection('favorites').doc(_favIdFor(widget.docTitle));
+      final favRef = _db
+          .collection('Users')
+          .doc(uid)
+          .collection('favorites')
+          .doc(_favIdFor(widget.docTitle));
 
       if (_isFavorite) {
         await favRef.delete();
@@ -183,26 +200,56 @@ class _DocDetailPageState extends State<DocDetailPage> {
         final data = snap.data;
 
         final user = data?.userData ?? {};
-        final pass = data?.passportData ?? {};
+        final doc = data?.docData ?? {};
 
-        // Prefer passport doc fields first (because you added full info there),
-        // then fallback to user profile, then fallback to passed widget params.
-        final ownerName = _pickAnyToString(pass, const ['name', 'Name']).isNotEmpty
-            ? _pickAnyToString(pass, const ['name', 'Name'])
-            : (_pickAnyToString(user, const ['Name', 'name', 'fullName', 'FullName']).isNotEmpty
-                ? _pickAnyToString(user, const ['Name', 'name', 'fullName', 'FullName'])
+        // Prefer doc fields first, then fallback to user profile, then passed widget params.
+        final ownerName = _getLoose(doc, const ['name', 'Name']).isNotEmpty
+            ? _getLoose(doc, const ['name', 'Name'])
+            : (_getLoose(user, const ['Name', 'name', 'fullName', 'FullName'])
+                    .isNotEmpty
+                ? _getLoose(user, const ['Name', 'name', 'fullName', 'FullName'])
                 : widget.ownerName);
 
-        final ownerDob = _pickAnyToString(pass, const ['date of birth', 'dob', 'DOB', 'Date of Birth']).isNotEmpty
-            ? _pickAnyToString(pass, const ['date of birth', 'dob', 'DOB', 'Date of Birth'])
-            : (_pickAnyToString(user, const ['Date of Birth', 'DOB', 'dob', 'birthDate']).isNotEmpty
-                ? _pickAnyToString(user, const ['Date of Birth', 'DOB', 'dob', 'birthDate'])
+        final ownerDob = _getLoose(doc, const [
+          'date of birth',
+          'dob',
+          'Date of Birth',
+          'DOB',
+        ]).isNotEmpty
+            ? _getLoose(doc, const ['date of birth', 'dob', 'Date of Birth', 'DOB'])
+            : (_getLoose(user, const [
+                        'Date of Birth',
+                        'DOB',
+                        'dob',
+                        'birthDate'
+                      ]).isNotEmpty
+                ? _getLoose(user, const [
+                    'Date of Birth',
+                    'DOB',
+                    'dob',
+                    'birthDate'
+                  ])
                 : widget.ownerDob);
 
-        final ownerCountry = _pickAnyToString(pass, const ['nationality', 'Nationality', 'country', 'Country']).isNotEmpty
-            ? _pickAnyToString(pass, const ['nationality', 'Nationality', 'country', 'Country'])
-            : (_pickAnyToString(user, const ['Nationality', 'nationality', 'Country', 'country']).isNotEmpty
-                ? _pickAnyToString(user, const ['Nationality', 'nationality', 'Country', 'country'])
+        final ownerCountry = _getLoose(doc, const [
+          'nationality',
+          'Nationality',
+          'country',
+          'Country',
+        ]).isNotEmpty
+            ? _getLoose(doc, const ['nationality', 'Nationality', 'country', 'Country'])
+            : (_getLoose(user, const [
+                        'Nationality',
+                        'nationality',
+                        'Country',
+                        'country'
+                      ]).isNotEmpty
+                ? _getLoose(user, const [
+                    'Nationality',
+                    'nationality',
+                    'Country',
+                    'country'
+                  ])
                 : widget.ownerCountry);
 
         final previewUrl = data?.previewUrl;
@@ -211,7 +258,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
           ownerName: ownerName,
           ownerDob: ownerDob,
           ownerCountry: ownerCountry,
-          passportData: pass,
+          docData: doc,
           userData: user,
         );
 
@@ -257,12 +304,13 @@ class _DocDetailPageState extends State<DocDetailPage> {
 
                 const SizedBox(height: 14),
 
-                // ================= ACTIONS (Copy All + Share + Favorite) =================
+                // ================= ACTIONS =================
                 Row(
                   children: [
                     IconButton(
                       onPressed: () async {
-                        final all = details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        final all =
+                            details.map((e) => '${e.label}: ${e.value}').join('\n');
                         await _copyText(all, toastMsg: 'Copied all details');
                       },
                       icon: const Icon(Icons.copy),
@@ -286,7 +334,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                         previewUrl: previewUrl,
                       ),
                       icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
-                      color: _isFavorite ? mycolors.Primary : mycolors.textPrimary,
+                      color:
+                          _isFavorite ? mycolors.Primary : mycolors.textPrimary,
                     ),
                   ],
                 ),
@@ -312,7 +361,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
 
                 const SizedBox(height: 18),
 
-                // ================= DETAILS TITLE + COPY BUTTON =================
+                // ================= DETAILS TITLE + COPY =================
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -326,7 +375,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                     ),
                     TextButton.icon(
                       onPressed: () async {
-                        final all = details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        final all =
+                            details.map((e) => '${e.label}: ${e.value}').join('\n');
                         await _copyText(all, toastMsg: 'Copied');
                       },
                       icon: const Icon(Icons.copy, size: 18),
@@ -404,9 +454,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
     return widgets;
   }
 
-  // Copy behavior:
-  // - Tap: copy value, toast "Copied <Label>"
-  // - Long press: copy "Label: Value", toast "Copied"
   Widget _detailRow(ThemeData theme, String label, String value) {
     final displayValue = value.trim().isEmpty ? '-' : value.trim();
 
@@ -432,8 +479,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                 displayValue,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
-                   fontSize: mysizes.fontMd,
-                   fontWeight: FontWeight.w500
+                  fontSize: mysizes.fontMd,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -449,58 +496,90 @@ class _DocDetailPageState extends State<DocDetailPage> {
     );
   }
 
-  // ✅ Passport shows ALL fields from Users/{uid}/docs/Passport
+  // ✅ Passport shows fields from Users/{uid}/docs/{docId} with loose matching
   List<_DetailItem> _getDetailsByDocType({
     required String ownerName,
     required String ownerDob,
     required String ownerCountry,
-    required Map<String, dynamic> passportData,
+    required Map<String, dynamic> docData,
     required Map<String, dynamic> userData,
   }) {
     if (_isPassport(widget.docTitle)) {
-      String fromPass(List<String> keys) => _pickAnyToString(passportData, keys);
-      String fromUser(List<String> keys) => _pickAnyToString(userData, keys);
+      String fromDoc(List<String> keys) => _getLoose(docData, keys);
+      String fromUser(List<String> keys) => _getLoose(userData, keys);
 
-      // For safety: if doc field missing, fallback to ownerName/DOB/Nationality
-      final name = fromPass(['name', 'Name']).isNotEmpty ? fromPass(['name', 'Name']) : ownerName;
-      final dob = fromPass(['date of birth', 'dob', 'DOB']).isNotEmpty ? fromPass(['date of birth', 'dob', 'DOB']) : ownerDob;
-      final nationality = fromPass(['nationality', 'Nationality']).isNotEmpty ? fromPass(['nationality', 'Nationality']) : ownerCountry;
+      final name = fromDoc(['name', 'Name']).isNotEmpty
+          ? fromDoc(['name', 'Name'])
+          : ownerName;
 
-      final passportNo = fromPass(['passport no', 'passport_no', 'Passport No', 'passportNo']).isNotEmpty
-          ? fromPass(['passport no', 'passport_no', 'Passport No', 'passportNo'])
-          : (fromUser(['Passport No', 'passportNo']).isNotEmpty ? fromUser(['Passport No', 'passportNo']) : '-');
+      final dob = fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth']).isNotEmpty
+          ? fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth'])
+          : ownerDob;
+
+      final nationality =
+          fromDoc(['nationality', 'Nationality']).isNotEmpty
+              ? fromDoc(['nationality', 'Nationality'])
+              : ownerCountry;
+
+      final passportNo = fromDoc([
+        'passport no',
+        'passport_no',
+        'Passport No',
+        'passportNo',
+      ]).isNotEmpty
+          ? fromDoc(['passport no', 'passport_no', 'Passport No', 'passportNo'])
+          : (fromUser(['Passport No', 'passportNo']).isNotEmpty
+              ? fromUser(['Passport No', 'passportNo'])
+              : '-');
+
+      // ✅ THIS will now match: countrycode / country code / country_code / country code:
+      final countryCode = fromDoc([
+        'countrycode',
+        'country code',
+        'country_code',
+        'country code:',
+      ]);
 
       return [
         _DetailItem('Name', name),
         _DetailItem('Passport No', passportNo),
         _DetailItem('Nationality', nationality),
-        _DetailItem('Country Code', fromPass(['country code', 'country_code', 'Country Code']).isNotEmpty
-            ? fromPass(['country code', 'country_code', 'Country Code'])
-            : '-'),
+        _DetailItem('Country Code', countryCode.isEmpty ? '-' : countryCode),
         _DetailItem('Date of Birth', dob),
-        _DetailItem('Place of Birth', fromPass(['place of birth', 'place_of_birth', 'Place of Birth']).isNotEmpty
-            ? fromPass(['place of birth', 'place_of_birth', 'Place of Birth'])
-            : '-'),
-        _DetailItem('Sex', fromPass(['sex', 'Sex']).isNotEmpty ? fromPass(['sex', 'Sex']) : '-'),
-        _DetailItem('Type', fromPass(['type', 'Type']).isNotEmpty ? fromPass(['type', 'Type']) : '-'),
-        _DetailItem('Identity No', fromPass(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No']).isNotEmpty
-            ? fromPass(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No'])
-            : '-'),
-        _DetailItem('Height', fromPass(['height', 'Height']).isNotEmpty ? fromPass(['height', 'Height']) : '-'),
-        _DetailItem('Issuing Office', fromPass(['issuing office', 'issuing_office', 'Issuing Office']).isNotEmpty
-            ? fromPass(['issuing office', 'issuing_office', 'Issuing Office'])
-            : '-'),
-        _DetailItem('Date of Issue', fromPass(['date of issue', 'date_of_issue', 'Date of Issue']).isNotEmpty
-            ? fromPass(['date of issue', 'date_of_issue', 'Date of Issue'])
-            : '-'),
-        _DetailItem('Date of Expiry', fromPass(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry']).isNotEmpty
-            ? fromPass(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])
-            : '-'),
+        _DetailItem('Place of Birth',
+            fromDoc(['place of birth', 'place_of_birth', 'Place of Birth']).isEmpty
+                ? '-'
+                : fromDoc(['place of birth', 'place_of_birth', 'Place of Birth'])),
+        _DetailItem('Sex', fromDoc(['sex', 'Sex']).isEmpty ? '-' : fromDoc(['sex', 'Sex'])),
+        _DetailItem('Type', fromDoc(['type', 'Type']).isEmpty ? '-' : fromDoc(['type', 'Type'])),
+        _DetailItem(
+            'Identity No',
+            fromDoc(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No'])
+                    .isEmpty
+                ? '-'
+                : fromDoc(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No'])),
+        _DetailItem('Height',
+            fromDoc(['height', 'Height']).isEmpty ? '-' : fromDoc(['height', 'Height'])),
+        _DetailItem(
+            'Issuing Office',
+            fromDoc(['issuing office', 'issuing_office', 'Issuing Office']).isEmpty
+                ? '-'
+                : fromDoc(['issuing office', 'issuing_office', 'Issuing Office'])),
+        _DetailItem(
+            'Date of Issue',
+            fromDoc(['date of issue', 'date_of_issue', 'Date of Issue']).isEmpty
+                ? '-'
+                : fromDoc(['date of issue', 'date_of_issue', 'Date of Issue'])),
+        _DetailItem(
+            'Date of Expiry',
+            fromDoc(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])
+                    .isEmpty
+                ? '-'
+                : fromDoc(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])),
         _DetailItem('Status', widget.docDescription),
       ];
     }
 
-    // default docs
     return [
       _DetailItem('Owner', ownerName),
       _DetailItem('Document', widget.docTitle),
@@ -517,16 +596,12 @@ class _DetailItem {
 
 class _DocPayload {
   final String? previewUrl;
-
-  /// Users/{uid} data
   final Map<String, dynamic> userData;
-
-  /// Users/{uid}/docs/Passport data
-  final Map<String, dynamic> passportData;
+  final Map<String, dynamic> docData;
 
   const _DocPayload({
     required this.previewUrl,
     required this.userData,
-    required this.passportData,
+    required this.docData,
   });
 }

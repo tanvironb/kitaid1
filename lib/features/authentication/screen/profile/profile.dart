@@ -775,7 +775,7 @@ class _DocsFromFirestore extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => DocDetailPage(
                         uid: uid, 
-                        docId: doc.id,                 
+                        docId: 'Passport',                 
                         docTitle: doc.title,
                         docDescription: doc.description.isEmpty ? 'Active' : doc.description,
                         ownerName: ownerName,
