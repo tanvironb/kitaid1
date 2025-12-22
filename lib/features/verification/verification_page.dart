@@ -296,8 +296,10 @@ class VerificationPage extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
+                fontSize: mysizes.fontMd,
                 fontWeight: FontWeight.w700,
                 color: mycolors.textPrimary,
+                
               ),
             ),
           ),
@@ -306,6 +308,7 @@ class VerificationPage extends StatelessWidget {
               value,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: mycolors.textPrimary,
+                fontSize: mysizes.fontMd,
               ),
             ),
           ),
