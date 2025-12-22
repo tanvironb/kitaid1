@@ -253,7 +253,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
           userData: user,
         );
 
-        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode()
+        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode() 
         final qrPayload = <String, dynamic>{
           "type": "kitaid_verify",
           "kind": "doc",

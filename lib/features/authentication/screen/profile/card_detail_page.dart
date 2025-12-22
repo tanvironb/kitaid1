@@ -343,6 +343,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: mycolors.Primary,
                 fontWeight: FontWeight.w700,
+                fontSize: mysizes.fontSm,
               ),
             ),
           ),
@@ -356,14 +357,14 @@ class _CardDetailPageState extends State<CardDetailPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
-                aspectRatio: 1.8,
+                aspectRatio: 1.6,
                 child: _loadingImage
                     ? Container(
                         color: mycolors.bgPrimary,
                         alignment: Alignment.center,
                         child: const SizedBox(
                           width: 26,
-                          height: 26,
+                          height: 30,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
@@ -464,6 +465,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: mycolors.Primary,
                     fontWeight: FontWeight.w700,
+                    fontSize: mysizes.fontMd,
                   ),
                 ),
                 TextButton.icon(
@@ -473,7 +475,8 @@ class _CardDetailPageState extends State<CardDetailPage> {
                     await _copyText(all, toastMsg: 'Copied');
                   },
                   icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('Copy'),
+                  label: const Text('Copy',
+                  style: TextStyle(fontSize: mysizes.fontSm),),
                 ),
               ],
             ),
@@ -613,6 +616,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
               '$label: ',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                fontSize: mysizes.fontMd,
                 color: mycolors.textPrimary,
               ),
             ),
@@ -621,6 +625,8 @@ class _CardDetailPageState extends State<CardDetailPage> {
                 displayValue,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
+                  fontSize: mysizes.fontMd,
+                  fontWeight: FontWeight.w500
                 ),
               ),
             ),
