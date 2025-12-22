@@ -1,4 +1,6 @@
 // lib/features/authentication/screen/profile/doc_detail_page.dart
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,14 +11,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 class DocDetailPage extends StatefulWidget {
   const DocDetailPage({
     super.key,
-    required this.uid, // ✅ MUST be passed from profile page
-    required this.docId, // ✅ doc id inside Users/{uid}/docs/{docId} (e.g. "Passport")
+    required this.uid,
+    required this.docId, // Firestore doc id inside Users/{uid}/docs/{docId}
     required this.docTitle,
     required this.docDescription,
     required this.ownerName,
     required this.ownerDob,
     required this.ownerCountry,
-    this.previewAsset,
   });
 
   final String uid;
@@ -25,12 +26,9 @@ class DocDetailPage extends StatefulWidget {
   final String docTitle;
   final String docDescription;
 
-  // fallback values (used if Firebase fields are missing)
   final String ownerName;
   final String ownerDob;
   final String ownerCountry;
-
-  final String? previewAsset;
 
   @override
   State<DocDetailPage> createState() => _DocDetailPageState();
@@ -48,13 +46,14 @@ class _DocDetailPageState extends State<DocDetailPage> {
     return 'doc_$key';
   }
 
-  bool _isPassport(String title) {
-    final t = title.trim().toLowerCase();
-    return t.contains('passport');
+  bool _isPassportDoc() {
+    final t1 = widget.docTitle.trim().toLowerCase();
+    final t2 = widget.docId.trim().toLowerCase();
+    return t1.contains('passport') || t2.contains('passport');
   }
 
   // -----------------------
-  // Copy helpers (same style as CardDetailPage)
+  // Copy helpers
   // -----------------------
   void _toast(String msg) {
     if (!mounted) return;
@@ -67,19 +66,10 @@ class _DocDetailPageState extends State<DocDetailPage> {
   }
 
   // -----------------------
-  // Value helpers
+  // Loose key matcher
   // -----------------------
   static String _stringify(dynamic v) => (v ?? '').toString().trim();
 
-  static bool _looksLikeUrl(String? v) {
-    if (v == null) return false;
-    final s = v.trim();
-    return s.startsWith('http://') || s.startsWith('https://');
-  }
-
-  /// ✅ Loose matcher: removes spaces/underscores/colons etc.
-  /// So these all match the same key:
-  /// "country code", "country_code", "countrycode", "country code:"
   static String _getLoose(Map<String, dynamic> map, List<String> keys) {
     String norm(String s) =>
         s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -116,31 +106,20 @@ class _DocDetailPageState extends State<DocDetailPage> {
     final userSnap = await _db.collection('Users').doc(uid).get();
     final user = userSnap.data() ?? {};
 
-    // doc data (Users/{uid}/docs/{docId})
-    final docSnap = await _db
+    // ✅ doc data
+    final docRef = _db
         .collection('Users')
         .doc(uid)
         .collection('docs')
-        .doc(widget.docId)
-        .get();
+        .doc(widget.docId);
 
-    final docData = docSnap.data() ?? {};
-
-    // preview url: cover url stored in field "Passport" (per your screenshot)
-    // but we also support variants safely.
-    final previewUrl = _getLoose(docData, const [
-      'Passport',
-      'passport',
-      'imageUrl',
-      'url',
-      'coverUrl',
-      'previewUrl',
-    ]);
+    final docSnap = await docRef.get();
 
     return _DocPayload(
-      previewUrl: _looksLikeUrl(previewUrl) ? previewUrl : null,
+      docExists: docSnap.exists,
+      docPath: docRef.path,
       userData: user,
-      docData: docData,
+      docData: docSnap.data() ?? {},
     );
   }
 
@@ -148,7 +127,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
     required String ownerName,
     required String ownerDob,
     required String ownerCountry,
-    required String? previewUrl,
   }) async {
     final uid = widget.uid;
     if (_favBusy) return;
@@ -174,7 +152,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
           'ownerName': ownerName,
           'ownerDob': ownerDob,
           'ownerCountry': ownerCountry,
-          'previewUrl': previewUrl,
           'createdAt': FieldValue.serverTimestamp(),
         });
         setState(() => _isFavorite = true);
@@ -197,12 +174,44 @@ class _DocDetailPageState extends State<DocDetailPage> {
     return FutureBuilder<_DocPayload>(
       future: _load(),
       builder: (context, snap) {
-        final data = snap.data;
+        // show loading
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            appBar: AppBar(
+              backgroundColor: theme.scaffoldBackgroundColor,
+              elevation: 0,
+              foregroundColor: mycolors.textPrimary,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
-        final user = data?.userData ?? {};
-        final doc = data?.docData ?? {};
+        // show error
+        if (snap.hasError) {
+          return _errorScaffold(
+            theme,
+            'Failed to load document.\n${snap.error}',
+          );
+        }
 
-        // Prefer doc fields first, then fallback to user profile, then passed widget params.
+        final data = snap.data!;
+        final user = data.userData;
+        final doc = data.docData;
+
+        // ✅ if doc missing / denied, show clear message instead of "-"
+        if (!data.docExists) {
+          return _errorScaffold(
+            theme,
+            'Document not found or permission denied.\n\nPath:\n${data.docPath}\n\nOpened docId:\n${widget.docId}',
+          );
+        }
+
+        // Prefer doc fields first, then fallback to user profile, then widget params.
         final ownerName = _getLoose(doc, const ['name', 'Name']).isNotEmpty
             ? _getLoose(doc, const ['name', 'Name'])
             : (_getLoose(user, const ['Name', 'name', 'fullName', 'FullName'])
@@ -217,18 +226,10 @@ class _DocDetailPageState extends State<DocDetailPage> {
           'DOB',
         ]).isNotEmpty
             ? _getLoose(doc, const ['date of birth', 'dob', 'Date of Birth', 'DOB'])
-            : (_getLoose(user, const [
-                        'Date of Birth',
-                        'DOB',
-                        'dob',
-                        'birthDate'
-                      ]).isNotEmpty
-                ? _getLoose(user, const [
-                    'Date of Birth',
-                    'DOB',
-                    'dob',
-                    'birthDate'
-                  ])
+            : (_getLoose(user, const ['Date of Birth', 'DOB', 'dob', 'birthDate'])
+                    .isNotEmpty
+                ? _getLoose(
+                    user, const ['Date of Birth', 'DOB', 'dob', 'birthDate'])
                 : widget.ownerDob);
 
         final ownerCountry = _getLoose(doc, const [
@@ -238,21 +239,11 @@ class _DocDetailPageState extends State<DocDetailPage> {
           'Country',
         ]).isNotEmpty
             ? _getLoose(doc, const ['nationality', 'Nationality', 'country', 'Country'])
-            : (_getLoose(user, const [
-                        'Nationality',
-                        'nationality',
-                        'Country',
-                        'country'
-                      ]).isNotEmpty
-                ? _getLoose(user, const [
-                    'Nationality',
-                    'nationality',
-                    'Country',
-                    'country'
-                  ])
+            : (_getLoose(user, const ['Nationality', 'nationality', 'Country', 'country'])
+                    .isNotEmpty
+                ? _getLoose(
+                    user, const ['Nationality', 'nationality', 'Country', 'country'])
                 : widget.ownerCountry);
-
-        final previewUrl = data?.previewUrl;
 
         final details = _getDetailsByDocType(
           ownerName: ownerName,
@@ -262,8 +253,19 @@ class _DocDetailPageState extends State<DocDetailPage> {
           userData: user,
         );
 
-        final qrData =
-            'KitaID|DOC|${widget.docTitle}|${widget.docDescription}|$ownerName|$ownerDob|$ownerCountry';
+        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode()
+        final qrPayload = <String, dynamic>{
+          "type": "kitaid_verify",
+          "kind": "doc",
+          "uid": widget.uid,
+          "docId": widget.docId,
+          "docTitle": widget.docTitle,
+          "ownerName": ownerName,
+          "ownerDob": ownerDob,
+          "ownerCountry": ownerCountry,
+          "ts": DateTime.now().millisecondsSinceEpoch,
+        };
+        final qrData = jsonEncode(qrPayload);
 
         return Scaffold(
           backgroundColor: theme.scaffoldBackgroundColor,
@@ -293,24 +295,14 @@ class _DocDetailPageState extends State<DocDetailPage> {
             child: ListView(
               padding: const EdgeInsets.all(mysizes.defaultspace),
               children: [
-                // ================= PREVIEW =================
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 1.2,
-                    child: _buildPreview(theme, previewUrl),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
                 // ================= ACTIONS =================
                 Row(
                   children: [
                     IconButton(
                       onPressed: () async {
-                        final all =
-                            details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        final all = details
+                            .map((e) => '${e.label}: ${e.value}')
+                            .join('\n');
                         await _copyText(all, toastMsg: 'Copied all details');
                       },
                       icon: const Icon(Icons.copy),
@@ -331,7 +323,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
                         ownerName: ownerName,
                         ownerDob: ownerDob,
                         ownerCountry: ownerCountry,
-                        previewUrl: previewUrl,
                       ),
                       icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
                       color:
@@ -375,8 +366,9 @@ class _DocDetailPageState extends State<DocDetailPage> {
                     ),
                     TextButton.icon(
                       onPressed: () async {
-                        final all =
-                            details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        final all = details
+                            .map((e) => '${e.label}: ${e.value}')
+                            .join('\n');
                         await _copyText(all, toastMsg: 'Copied');
                       },
                       icon: const Icon(Icons.copy, size: 18),
@@ -407,39 +399,29 @@ class _DocDetailPageState extends State<DocDetailPage> {
     );
   }
 
-  Widget _buildPreview(ThemeData theme, String? previewUrl) {
-    if (previewUrl != null && previewUrl.trim().isNotEmpty) {
-      return Image.network(
-        previewUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallbackPreview(theme),
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Container(
-            color: mycolors.bgPrimary,
-            alignment: Alignment.center,
-            child: const CircularProgressIndicator(),
-          );
-        },
-      );
-    }
-
-    if (widget.previewAsset != null) {
-      return Image.asset(widget.previewAsset!, fit: BoxFit.cover);
-    }
-
-    return _fallbackPreview(theme);
-  }
-
-  Widget _fallbackPreview(ThemeData theme) {
-    return Container(
-      color: mycolors.bgPrimary,
-      alignment: Alignment.center,
-      child: Text(
-        '${widget.docTitle} Preview',
-        style: theme.textTheme.titleMedium?.copyWith(
-          color: mycolors.textPrimary,
-          fontWeight: FontWeight.w600,
+  Scaffold _errorScaffold(ThemeData theme, String message) {
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        foregroundColor: mycolors.textPrimary,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(mysizes.defaultspace),
+        child: Center(
+          child: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: mycolors.textPrimary,
+              fontSize: mysizes.fontMd,
+            ),
+          ),
         ),
       ),
     );
@@ -496,7 +478,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
     );
   }
 
-  // ✅ Passport shows fields from Users/{uid}/docs/{docId} with loose matching
   List<_DetailItem> _getDetailsByDocType({
     required String ownerName,
     required String ownerDob,
@@ -504,41 +485,39 @@ class _DocDetailPageState extends State<DocDetailPage> {
     required Map<String, dynamic> docData,
     required Map<String, dynamic> userData,
   }) {
-    if (_isPassport(widget.docTitle)) {
+    if (_isPassportDoc()) {
       String fromDoc(List<String> keys) => _getLoose(docData, keys);
       String fromUser(List<String> keys) => _getLoose(userData, keys);
+
+      String safe(List<String> keys) {
+        final v = fromDoc(keys);
+        return v.isEmpty ? '-' : v;
+      }
 
       final name = fromDoc(['name', 'Name']).isNotEmpty
           ? fromDoc(['name', 'Name'])
           : ownerName;
 
-      final dob = fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth']).isNotEmpty
+      final dob = fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth'])
+              .isNotEmpty
           ? fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth'])
           : ownerDob;
 
-      final nationality =
-          fromDoc(['nationality', 'Nationality']).isNotEmpty
-              ? fromDoc(['nationality', 'Nationality'])
-              : ownerCountry;
+      final nationality = fromDoc(['nationality', 'Nationality']).isNotEmpty
+          ? fromDoc(['nationality', 'Nationality'])
+          : ownerCountry;
 
-      final passportNo = fromDoc([
-        'passport no',
-        'passport_no',
-        'Passport No',
-        'passportNo',
-      ]).isNotEmpty
-          ? fromDoc(['passport no', 'passport_no', 'Passport No', 'passportNo'])
-          : (fromUser(['Passport No', 'passportNo']).isNotEmpty
-              ? fromUser(['Passport No', 'passportNo'])
-              : '-');
+      final passportNo =
+          fromDoc(['passport no', 'passport_no', 'Passport No', 'passportNo'])
+                  .isNotEmpty
+              ? fromDoc(
+                  ['passport no', 'passport_no', 'Passport No', 'passportNo'])
+              : (fromUser(['Passport No', 'passportNo']).isNotEmpty
+                  ? fromUser(['Passport No', 'passportNo'])
+                  : '-');
 
-      // ✅ THIS will now match: countrycode / country code / country_code / country code:
-      final countryCode = fromDoc([
-        'countrycode',
-        'country code',
-        'country_code',
-        'country code:',
-      ]);
+      final countryCode = fromDoc(
+          ['countrycode', 'country code', 'country_code', 'country code:']);
 
       return [
         _DetailItem('Name', name),
@@ -547,39 +526,23 @@ class _DocDetailPageState extends State<DocDetailPage> {
         _DetailItem('Country Code', countryCode.isEmpty ? '-' : countryCode),
         _DetailItem('Date of Birth', dob),
         _DetailItem('Place of Birth',
-            fromDoc(['place of birth', 'place_of_birth', 'Place of Birth']).isEmpty
-                ? '-'
-                : fromDoc(['place of birth', 'place_of_birth', 'Place of Birth'])),
-        _DetailItem('Sex', fromDoc(['sex', 'Sex']).isEmpty ? '-' : fromDoc(['sex', 'Sex'])),
-        _DetailItem('Type', fromDoc(['type', 'Type']).isEmpty ? '-' : fromDoc(['type', 'Type'])),
-        _DetailItem(
-            'Identity No',
-            fromDoc(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No'])
-                    .isEmpty
-                ? '-'
-                : fromDoc(['identity no', 'identity_no', 'Identity No', 'ic', 'IC No'])),
-        _DetailItem('Height',
-            fromDoc(['height', 'Height']).isEmpty ? '-' : fromDoc(['height', 'Height'])),
-        _DetailItem(
-            'Issuing Office',
-            fromDoc(['issuing office', 'issuing_office', 'Issuing Office']).isEmpty
-                ? '-'
-                : fromDoc(['issuing office', 'issuing_office', 'Issuing Office'])),
-        _DetailItem(
-            'Date of Issue',
-            fromDoc(['date of issue', 'date_of_issue', 'Date of Issue']).isEmpty
-                ? '-'
-                : fromDoc(['date of issue', 'date_of_issue', 'Date of Issue'])),
-        _DetailItem(
-            'Date of Expiry',
-            fromDoc(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])
-                    .isEmpty
-                ? '-'
-                : fromDoc(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])),
+            safe(['place of birth', 'place_of_birth', 'Place of Birth'])),
+        _DetailItem('Sex', safe(['sex', 'Sex'])),
+        _DetailItem('Type', safe(['type', 'Type'])),
+        _DetailItem('Identity No',
+            safe(['identity no', 'identity_no', 'Identity No'])),
+        _DetailItem('Height', safe(['height', 'Height'])),
+        _DetailItem('Issuing Office',
+            safe(['issuing office', 'issuing_office', 'Issuing Office'])),
+        _DetailItem('Date of Issue',
+            safe(['date of issue', 'date_of_issue', 'Date of Issue'])),
+        _DetailItem('Date of Expiry',
+            safe(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])),
         _DetailItem('Status', widget.docDescription),
       ];
     }
 
+    // International Driving License (and others) -> simple details
     return [
       _DetailItem('Owner', ownerName),
       _DetailItem('Document', widget.docTitle),
@@ -595,12 +558,14 @@ class _DetailItem {
 }
 
 class _DocPayload {
-  final String? previewUrl;
+  final bool docExists;
+  final String docPath;
   final Map<String, dynamic> userData;
   final Map<String, dynamic> docData;
 
   const _DocPayload({
-    required this.previewUrl,
+    required this.docExists,
+    required this.docPath,
     required this.userData,
     required this.docData,
   });

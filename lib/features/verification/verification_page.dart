@@ -15,6 +15,10 @@ class VerificationPage extends StatelessWidget {
     return payload != null && payload['type'] == 'kitaid_verify';
   }
 
+  // =========================
+  // CARDS (KEEP AS IS)
+  // =========================
+
   /// ✅ UPDATED: include "Driving License" so it matches your Firestore doc id exactly.
   List<String> _cardDocCandidates(String cardIdFromQr) {
     final t = cardIdFromQr.trim().toLowerCase();
@@ -78,9 +82,7 @@ class VerificationPage extends StatelessWidget {
     return fallback;
   }
 
-  /// ✅ NEW: decide which fields to show per card type
-  /// - IC/MyKad: show DOB, nationality, phone, address (location)
-  /// - Driving License: show class, identity no, validity, nationality, address
+  /// ✅ decide which fields to show per card type
   Map<String, String> _extractCardFields({
     required String cardIdFromQr,
     required Map<String, dynamic>? cardData,
@@ -101,11 +103,9 @@ class VerificationPage extends StatelessWidget {
 
     final data = cardData!;
 
-    // Shared fields (sometimes in different keys)
     final nationality = _pick(data, ['nationality', 'Nationality'], '-');
     final address = _pick(
       data,
-      // ✅ you used location before but your driving license doc uses "address"
       ['location', 'address', 'Address'],
       '-',
     );
@@ -141,7 +141,7 @@ class VerificationPage extends StatelessWidget {
       final validity = _pick(data, ['validity', 'Validity'], '-');
 
       return {
-        'dob': '-', // driving license doc usually doesn't have DOB
+        'dob': '-',
         'nationality': nationality,
         'address': address,
         'class': licenseClass,
@@ -150,7 +150,6 @@ class VerificationPage extends StatelessWidget {
       };
     }
 
-    // Other cards (fallback)
     return {
       'dob': _pick(data, ['dob', 'DOB', 'dateOfBirth'], '-'),
       'nationality': nationality,
@@ -159,6 +158,42 @@ class VerificationPage extends StatelessWidget {
       'identityNo': _pick(data, ['identity no', 'identityNo', 'ic', 'IC'], '-'),
       'validity': _pick(data, ['validity', 'Validity'], '-'),
     };
+  }
+
+  // =========================
+  // DOCS
+  // =========================
+
+  String _getLoose(Map<String, dynamic> map, List<String> keys, String fallback) {
+    String norm(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    final normMap = <String, dynamic>{};
+    for (final e in map.entries) {
+      normMap[norm(e.key.toString())] = e.value;
+    }
+
+    for (final k in keys) {
+      final v = normMap[norm(k)];
+      final out = (v ?? '').toString().trim();
+      if (out.isNotEmpty) return out;
+    }
+    return fallback;
+  }
+
+  Future<Map<String, dynamic>?> _fetchDocData({
+    required String uid,
+    required String docIdFromQr,
+  }) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(uid)
+        .collection('docs')
+        .doc(docIdFromQr)
+        .get();
+
+    if (doc.exists) return doc.data();
+    return null;
   }
 
   @override
@@ -173,9 +208,16 @@ class VerificationPage extends StatelessWidget {
     }
 
     final isValid = _looksValidPayload(payload);
-    final uid = isValid ? (payload!['uid']?.toString() ?? '') : '';
-    final cardId = isValid ? (payload!['cardId']?.toString() ?? '') : '';
 
+    final uid = isValid ? (payload!['uid']?.toString().trim() ?? '') : '';
+    final kind =
+        isValid ? (payload!['kind']?.toString().trim().toLowerCase() ?? 'card') : 'card';
+
+    final cardId = isValid ? (payload!['cardId']?.toString() ?? '') : '';
+    final docId = isValid ? (payload!['docId']?.toString() ?? '') : '';
+    final docTitleFromQr = isValid ? (payload!['docTitle']?.toString() ?? '') : '';
+
+    // ✅ SCROLL FIX: make whole page scrollable and avoid overflow
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -184,103 +226,278 @@ class VerificationPage extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(mysizes.defaultspace),
-        child: (!isValid || uid.isEmpty)
-            ? _error(theme, 'Invalid QR code')
-            : FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
-                builder: (context, userSnap) {
-                  if (userSnap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (!userSnap.hasData || !userSnap.data!.exists) {
-                    return _error(theme, 'User not found');
-                  }
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(mysizes.defaultspace),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: (!isValid || uid.isEmpty)
+                    ? _error(theme, 'Invalid QR code (missing uid)')
+                    : (kind == 'doc')
+                        // =========================
+                        // DOC VERIFICATION UI
+                        // =========================
+                        ? FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
+                            builder: (context, userSnap) {
+                              if (userSnap.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (!userSnap.hasData || !userSnap.data!.exists) {
+                                return _error(theme, 'User not found');
+                              }
 
-                  final user = userSnap.data!.data() ?? {};
+                              final user = userSnap.data!.data() ?? {};
+                              final name = (user['Name'] ?? '-').toString();
+                              final ic =
+                                  (user['IC No'] ?? user['Passport No'] ?? '-').toString();
+                              final phone = (user['Phone No'] ?? '-').toString();
 
-                  // ✅ user basic info
-                  final name = (user['Name'] ?? '-').toString();
-                  final ic = (user['IC No'] ?? user['Passport No'] ?? '-').toString();
-                  final phone = (user['Phone No'] ?? '-').toString();
+                              if (docId.trim().isEmpty) {
+                                return _error(theme, 'Invalid DOC QR (missing docId)');
+                              }
 
-                  // ✅ fetch card data (nationality/dob/address are stored here in your DB)
-                  return FutureBuilder<Map<String, dynamic>?>(
-                    future: _fetchCardData(uid: uid, cardIdFromQr: cardId),
-                    builder: (context, cardSnap) {
-                      if (cardSnap.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
+                              return FutureBuilder<Map<String, dynamic>?>(
+                                future: _fetchDocData(uid: uid, docIdFromQr: docId),
+                                builder: (context, docSnap) {
+                                  if (docSnap.connectionState == ConnectionState.waiting) {
+                                    return const Center(child: CircularProgressIndicator());
+                                  }
 
-                      final cardData = cardSnap.data;
-                      final cardExists = cardData != null;
+                                  final docData = docSnap.data;
+                                  final docExists = docData != null;
 
-                      final extracted = _extractCardFields(
-                        cardIdFromQr: cardId,
-                        cardData: cardData,
-                      );
+                                  final isPassport = (docTitleFromQr
+                                          .toLowerCase()
+                                          .contains('passport') ||
+                                      docId.toLowerCase().contains('passport'));
 
-                      final t = cardId.trim().toLowerCase();
-                      final isDriving = t.contains('driving');
-                      final isIc = (t == 'ic' || t == 'mykad');
+                                  return Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: mycolors.borderprimary),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          docExists ? Icons.verified : Icons.cancel,
+                                          size: 80,
+                                          color: docExists ? Colors.green : Colors.red,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          docExists ? 'Verified' : 'Not Verified',
+                                          style: theme.textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            color: docExists ? Colors.green : Colors.red,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 18),
 
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: mycolors.borderprimary),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              cardExists ? Icons.verified : Icons.cancel,
-                              size: 80,
-                              color: cardExists ? Colors.green : Colors.red,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              cardExists ? 'Verified' : 'Not Verified',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: cardExists ? Colors.green : Colors.red,
-                              ),
-                            ),
-                            const SizedBox(height: 18),
+                                        _row(theme, 'Name:', name),
+                                        _row(theme, 'IC/Passport:', ic),
 
-                            _row(theme, 'Name:', name),
-                            _row(theme, 'IC/Passport:', ic),
+                                        if (!docExists) ...[
+                                          const SizedBox(height: 8),
+                                          _row(
+                                            theme,
+                                            'Document:',
+                                            docTitleFromQr.isEmpty ? docId : docTitleFromQr,
+                                          ),
+                                        ] else if (isPassport) ...[
+                                          _row(
+                                            theme,
+                                            'Passport No:',
+                                            _getLoose(
+                                              docData!,
+                                              ['passport no', 'passport_no', 'Passport No', 'passportNo'],
+                                              '-',
+                                            ),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Nationality:',
+                                            _getLoose(docData!, ['nationality', 'Nationality'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Country Code:',
+                                            _getLoose(docData!, ['countrycode', 'country code', 'country_code'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Date of Birth:',
+                                            _getLoose(docData!, ['date of birth', 'dob', 'DOB'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Place of Birth:',
+                                            _getLoose(docData!, ['place of birth', 'place_of_birth'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Sex:',
+                                            _getLoose(docData!, ['sex', 'Sex'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Type:',
+                                            _getLoose(docData!, ['type', 'Type'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Identity No:',
+                                            _getLoose(docData!, ['identity no', 'identity_no', 'identityNo'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Height:',
+                                            _getLoose(docData!, ['height', 'Height'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Issuing Office:',
+                                            _getLoose(docData!, ['issuing office', 'issuing_office'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Date of Issue:',
+                                            _getLoose(docData!, ['date of issue', 'date_of_issue'], '-'),
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Date of Expiry:',
+                                            _getLoose(docData!, ['date of expiry', 'date_of_expiry', 'expiry'], '-'),
+                                          ),
+                                          _row(theme, 'Phone:', phone),
+                                        ] else ...[
+                                          _row(
+                                            theme,
+                                            'Document:',
+                                            docTitleFromQr.isEmpty ? docId : docTitleFromQr,
+                                          ),
+                                          _row(
+                                            theme,
+                                            'Status:',
+                                            (payload?['status']?.toString().trim().isNotEmpty ?? false)
+                                                ? payload!['status'].toString()
+                                                : 'Active',
+                                          ),
+                                          _row(theme, 'Phone:', phone),
+                                        ],
 
-                            // ✅ Show different info based on card type
-                            if (isIc) ...[
-                              _row(theme, 'Date of Birth:', extracted['dob'] ?? '-'),
-                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
-                              _row(theme, 'Phone:', phone),
-                              _row(theme, 'Address:', extracted['address'] ?? '-'),
-                            ] else if (isDriving) ...[
-                              _row(theme, 'Identity No:', extracted['identityNo'] ?? '-'),
-                              _row(theme, 'Class:', extracted['class'] ?? '-'),
-                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
-                              _row(theme, 'Validity:', extracted['validity'] ?? '-'),
-                              _row(theme, 'Address:', extracted['address'] ?? '-'),
-                            ] else ...[
-                              _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
-                              _row(theme, 'Phone:', phone),
-                              _row(theme, 'Address:', extracted['address'] ?? '-'),
-                            ],
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        // =========================
+                        // CARDS VERIFICATION UI (KEEP AS IS)
+                        // =========================
+                        : FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
+                            builder: (context, userSnap) {
+                              if (userSnap.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (!userSnap.hasData || !userSnap.data!.exists) {
+                                return _error(theme, 'User not found');
+                              }
 
-                            _row(theme, 'Card Type:', cardId),
+                              final user = userSnap.data!.data() ?? {};
+                              final name = (user['Name'] ?? '-').toString();
+                              final ic =
+                                  (user['IC No'] ?? user['Passport No'] ?? '-').toString();
+                              final phone = (user['Phone No'] ?? '-').toString();
 
-                            const SizedBox(height: 6),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+                              return FutureBuilder<Map<String, dynamic>?>(
+                                future: _fetchCardData(uid: uid, cardIdFromQr: cardId),
+                                builder: (context, cardSnap) {
+                                  if (cardSnap.connectionState == ConnectionState.waiting) {
+                                    return const Center(child: CircularProgressIndicator());
+                                  }
+
+                                  final cardData = cardSnap.data;
+                                  final cardExists = cardData != null;
+
+                                  final extracted = _extractCardFields(
+                                    cardIdFromQr: cardId,
+                                    cardData: cardData,
+                                  );
+
+                                  final t = cardId.trim().toLowerCase();
+                                  final isDriving = t.contains('driving');
+                                  final isIc = (t == 'ic' || t == 'mykad');
+
+                                  return Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: mycolors.borderprimary),
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          cardExists ? Icons.verified : Icons.cancel,
+                                          size: 80,
+                                          color: cardExists ? Colors.green : Colors.red,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          cardExists ? 'Verified' : 'Not Verified',
+                                          style: theme.textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            color: cardExists ? Colors.green : Colors.red,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 18),
+
+                                        _row(theme, 'Name:', name),
+                                        _row(theme, 'IC/Passport:', ic),
+
+                                        if (isIc) ...[
+                                          _row(theme, 'Date of Birth:', extracted['dob'] ?? '-'),
+                                          _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                                          _row(theme, 'Phone:', phone),
+                                          _row(theme, 'Address:', extracted['address'] ?? '-'),
+                                        ] else if (isDriving) ...[
+                                          _row(theme, 'Identity No:', extracted['identityNo'] ?? '-'),
+                                          _row(theme, 'Class:', extracted['class'] ?? '-'),
+                                          _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                                          _row(theme, 'Validity:', extracted['validity'] ?? '-'),
+                                          _row(theme, 'Address:', extracted['address'] ?? '-'),
+                                        ] else ...[
+                                          _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                                          _row(theme, 'Phone:', phone),
+                                          _row(theme, 'Address:', extracted['address'] ?? '-'),
+                                        ],
+
+                                        _row(theme, 'Card Type:', cardId),
+
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
               ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -292,14 +509,13 @@ class VerificationPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 130, // ✅ wider so labels stay in one line
+            width: 130,
             child: Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: mysizes.fontMd,
                 fontWeight: FontWeight.w700,
                 color: mycolors.textPrimary,
-                
               ),
             ),
           ),
@@ -330,6 +546,7 @@ class VerificationPage extends StatelessWidget {
               color: mycolors.textPrimary,
               fontWeight: FontWeight.w600,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

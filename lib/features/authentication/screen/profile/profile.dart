@@ -774,10 +774,11 @@ class _DocsFromFirestore extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => DocDetailPage(
-                        uid: uid, 
-                        docId: 'Passport',                 
+                        uid: uid,
+                        docId: doc.id, // ✅ FIX: open the exact doc user tapped
                         docTitle: doc.title,
-                        docDescription: doc.description.isEmpty ? 'Active' : doc.description,
+                        docDescription:
+                            doc.description.isEmpty ? 'Active' : doc.description,
                         ownerName: ownerName,
                         ownerDob: ownerDob,
                         ownerCountry: ownerCountry,
@@ -795,7 +796,6 @@ class _DocsFromFirestore extends StatelessWidget {
   }
 }
 
-/// ✅ Big Doc card (same style as Cards)
 class _DocTileBig extends StatelessWidget {
   const _DocTileBig({
     required this.doc,
@@ -809,81 +809,72 @@ class _DocTileBig extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasNetworkImage =
+    final hasImage =
         doc.previewUrl != null && doc.previewUrl!.trim().isNotEmpty;
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: mycolors.borderprimary.withOpacity(0.3),
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            AspectRatio(
-              aspectRatio: 1.6,
-              child: hasNetworkImage
-                  ? Image.network(
-                      doc.previewUrl!,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return Container(
-                          color: mycolors.bgPrimary,
-                          alignment: Alignment.center,
-                          child: const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        );
-                      },
-                      errorBuilder: (_, __, ___) {
-                        return Container(
-                          color: mycolors.bgPrimary,
-                          alignment: Alignment.center,
-                          child: Text(
-                            '${doc.title} Preview',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: mycolors.textPrimary,
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: mycolors.bgPrimary,
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${doc.title} Preview',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: mycolors.textPrimary,
-                        ),
-                      ),
+            // LEFT ─── Text info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    doc.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: mysizes.fontMd,
+                      color: mycolors.textPrimary,
                     ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+                  ),
+                  // ✅ Show Passport No ONLY for Passport
+                  if (doc.title.toLowerCase().contains('passport')) ...[
+                    const SizedBox(height: 6),
                     Text(
-                      doc.title,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: mycolors.textPrimary,
+                      doc.description.isNotEmpty
+                          ? doc.description
+                          : 'Passport No: -',
+                      style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: mysizes.fontSm,
+                        color: mycolors.textSecondary,
                       ),
                     ),
-                  ],
-                ),
+                ],
+              ],
+            ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // RIGHT ─── Passport cover (small)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 70,
+                height: 90,
+                color: mycolors.bgPrimary,
+                child: hasImage
+                    ? Image.network(
+                        doc.previewUrl!,
+                        fit: BoxFit.cover,
+                      )
+                    : Icon(
+                        Icons.description,
+                        color: mycolors.textSecondary,
+                        size: 30,
+                      ),
               ),
             ),
           ],
