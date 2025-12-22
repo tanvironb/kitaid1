@@ -17,14 +17,14 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfileCardItem {
-  final String id; // Firestore doc id (example: "IC", "driving_license", ...)
+  final String id; // Firestore doc id
   final String title;
   final String idLabel;
 
-  /// ✅ Network image url from Firestore (Firebase Storage downloadURL)
+  /// Network image url from Firestore (Firebase Storage downloadURL)
   final String? imageUrl;
 
-  /// Local asset fallback (optional, keep for future)
+  /// Local asset fallback (optional)
   final String? imageAsset;
 
   const ProfileCardItem({
@@ -41,10 +41,14 @@ class ProfileDocItem {
   final String title;
   final String description;
 
+  /// Passport cover / doc preview URL
+  final String? previewUrl;
+
   const ProfileDocItem({
     required this.id,
     required this.title,
     required this.description,
+    this.previewUrl,
   });
 }
 
@@ -124,16 +128,19 @@ class _ProfilePageState extends State<ProfilePage> {
                   final ic = (data['IC No'] ?? '').toString().trim();
                   final phone = (data['Phone No'] ?? '').toString().trim();
 
-                  // Old fallback fields (keep)
+                  // fallback fields
                   final fallbackNationality =
-                      (data['Nationality'] ?? data['Country'] ?? '').toString().trim();
+                      (data['Nationality'] ?? data['Country'] ?? '')
+                          .toString()
+                          .trim();
                   final fallbackDob =
                       (data['dob'] ?? data['DOB'] ?? '').toString().trim();
 
-                  // ✅ profile photo url from Firestore
-                  final firestorePhotoUrl = (data['photoUrl'] ?? '').toString().trim();
+                  // profile photo url from Firestore
+                  final firestorePhotoUrl =
+                      (data['photoUrl'] ?? '').toString().trim();
 
-                  // ✅ fallback: FirebaseAuth photoURL
+                  // fallback: FirebaseAuth photoURL
                   final authPhotoUrl = _user?.photoURL?.trim() ?? '';
 
                   final resolvedPhotoUrl = _looksLikeUrl(firestorePhotoUrl)
@@ -143,7 +150,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   final displayName = name.isNotEmpty ? name : 'User';
                   final displayId = ic.isNotEmpty ? ic : uid;
 
-                  // ✅ NEW: read DOB + Nationality from cards collection (IC/MyKad doc)
+                  // ✅ Read DOB + Nationality from cards collection (IC/MyKad doc)
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('Users')
@@ -153,16 +160,17 @@ class _ProfilePageState extends State<ProfilePage> {
                     builder: (context, cardSnap) {
                       final cardDocs = cardSnap.data?.docs ?? [];
 
-                      // find IC/MyKad doc (your screenshot uses doc id "IC")
                       DocumentSnapshot<Map<String, dynamic>>? icDoc;
                       for (final d in cardDocs) {
                         final idLower = d.id.toLowerCase().trim();
-                        if (idLower == 'ic' || idLower == 'mykad' || idLower.contains('mykad')) {
+                        if (idLower == 'ic' ||
+                            idLower == 'mykad' ||
+                            idLower.contains('mykad')) {
                           icDoc = d;
                           break;
                         }
                         if (d.id == 'IC') {
-                          icDoc = d; // exact match too
+                          icDoc = d;
                           break;
                         }
                       }
@@ -171,14 +179,16 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       final nationalityFromCard =
                           _pick(cardData, ['nationality', 'Nationality'], '');
-                      final dobFromCard = _pick(cardData, ['dob', 'DOB', 'dateOfBirth'], '');
+                      final dobFromCard =
+                          _pick(cardData, ['dob', 'DOB', 'dateOfBirth'], '');
 
                       final displayNationality = (nationalityFromCard.isNotEmpty
                               ? nationalityFromCard
                               : fallbackNationality)
                           .trim();
                       final displayDob =
-                          (dobFromCard.isNotEmpty ? dobFromCard : fallbackDob).trim();
+                          (dobFromCard.isNotEmpty ? dobFromCard : fallbackDob)
+                              .trim();
 
                       final showNationality =
                           displayNationality.isNotEmpty ? displayNationality : '-';
@@ -216,7 +226,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     const SizedBox(width: 16),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           displayName,
@@ -255,11 +266,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Row(
                                   children: [
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Nationality', // ✅ label matches firebase
-                                          style: theme.textTheme.bodySmall?.copyWith(
+                                          'Nationality',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
                                             fontSize: mysizes.fontSm,
                                             color: mycolors.textPrimary,
                                             fontWeight: FontWeight.w500,
@@ -267,7 +280,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
                                         Text(
                                           showNationality,
-                                          style: theme.textTheme.bodySmall?.copyWith(
+                                          style:
+                                              theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 11,
                                             color: mycolors.textPrimary,
                                           ),
@@ -276,11 +290,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     const SizedBox(width: 40),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Date of Birth',
-                                          style: theme.textTheme.bodySmall?.copyWith(
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
                                             fontSize: mysizes.fontSm,
                                             color: mycolors.textPrimary,
                                             fontWeight: FontWeight.w500,
@@ -288,7 +304,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                         ),
                                         Text(
                                           showDob,
-                                          style: theme.textTheme.bodySmall?.copyWith(
+                                          style:
+                                              theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 11,
                                             color: mycolors.textPrimary,
                                           ),
@@ -333,14 +350,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 uid: uid,
                                 ownerName: displayName,
                                 ownerDob: showDob,
-                                ownerCountry: showNationality, // keep param name, value is nationality
+                                ownerCountry: showNationality,
                               )
                             else
                               _DocsFromFirestore(
                                 uid: uid,
                                 ownerName: displayName,
                                 ownerDob: showDob,
-                                ownerCountry: showNationality, // keep param name, value is nationality
+                                ownerCountry: showNationality,
                               ),
                           ],
                         ),
@@ -351,7 +368,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
       ),
 
-      // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 4,
         onTap: (index) {
@@ -362,10 +378,12 @@ class _ProfilePageState extends State<ProfilePage> {
               Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
               break;
             case 1:
-              Navigator.pushNamedAndRemoveUntil(context, '/chatbot', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/chatbot', (_) => false);
               break;
             case 2:
-              Navigator.pushNamedAndRemoveUntil(context, '/services', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/services', (_) => false);
               break;
             case 3:
               Navigator.pushNamedAndRemoveUntil(
@@ -421,7 +439,6 @@ class _SegmentTab extends StatelessWidget {
 
 /// ---------------------------
 /// CARDS FROM FIRESTORE
-/// Path: Users/{uid}/cards
 /// ---------------------------
 class _CardsFromFirestore extends StatelessWidget {
   const _CardsFromFirestore({
@@ -458,7 +475,6 @@ class _CardsFromFirestore extends StatelessWidget {
       'license',
       'licence',
       'drivingLicense',
-      'MyKad', // your card doc uses "MyKad"
     ];
 
     for (final k in keys) {
@@ -499,27 +515,15 @@ class _CardsFromFirestore extends StatelessWidget {
                 'No cards yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
-                  fontSize: mysizes.fontMd
+                  fontSize: mysizes.fontMd,
                 ),
               ),
             ),
           );
         }
 
-        docs.sort((a, b) {
-          String rank(String id) {
-            final x = id.trim().toLowerCase();
-            if (x == 'ic' || x.contains('mykad')) return '0_$x';
-            if (x.contains('driving')) return '1_$x';
-            return '2_$x';
-          }
-
-          return rank(a.id).compareTo(rank(b.id));
-        });
-
         final cards = docs.map((d) {
           final data = d.data();
-
           final title = (data['title'] ?? d.id).toString().trim();
           final rawIdLabel = (data['idLabel'] ?? '').toString().trim();
           final idLabel = rawIdLabel.isNotEmpty ? rawIdLabel : 'ID: -';
@@ -553,7 +557,7 @@ class _CardsFromFirestore extends StatelessWidget {
                         imageUrl: card.imageUrl,
                         ownerName: ownerName,
                         ownerDob: ownerDob,
-                        ownerCountry: ownerCountry, // this is nationality value now
+                        ownerCountry: ownerCountry,
                       ),
                     ),
                   );
@@ -583,8 +587,6 @@ class _CardTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasNetworkImage =
         card.imageUrl != null && card.imageUrl!.trim().isNotEmpty;
-    final hasAssetImage =
-        card.imageAsset != null && card.imageAsset!.trim().isNotEmpty;
 
     return InkWell(
       onTap: onTap,
@@ -617,13 +619,28 @@ class _CardTile extends StatelessWidget {
                         );
                       },
                       errorBuilder: (context, error, stackTrace) {
-                        debugPrint('❌ Card preview image failed: $error');
-                        return _fallbackPreview();
+                        return Container(
+                          color: mycolors.bgPrimary,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${card.title} Preview',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: mycolors.textPrimary,
+                            ),
+                          ),
+                        );
                       },
                     )
-                  : hasAssetImage
-                      ? Image.asset(card.imageAsset!, fit: BoxFit.cover)
-                      : _fallbackPreview(),
+                  : Container(
+                      color: mycolors.bgPrimary,
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${card.title} Preview',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: mycolors.textPrimary,
+                        ),
+                      ),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
@@ -650,24 +667,11 @@ class _CardTile extends StatelessWidget {
       ),
     );
   }
-
-  Widget _fallbackPreview() {
-    return Container(
-      color: mycolors.bgPrimary,
-      alignment: Alignment.center,
-      child: Text(
-        '${card.title} Preview',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: mycolors.textPrimary,
-        ),
-      ),
-    );
-  }
 }
 
 /// ---------------------------
 /// DOCS FROM FIRESTORE
-/// Path: Users/{uid}/docs
+/// ✅ Big cards like Cards (Passport cover as preview)
 /// ---------------------------
 class _DocsFromFirestore extends StatelessWidget {
   const _DocsFromFirestore({
@@ -681,6 +685,40 @@ class _DocsFromFirestore extends StatelessWidget {
   final String ownerName;
   final String ownerDob;
   final String ownerCountry;
+
+  bool _looksLikeUrl(String? v) {
+    if (v == null) return false;
+    final s = v.trim();
+    if (s.isEmpty) return false;
+    return s.startsWith('http://') || s.startsWith('https://');
+  }
+
+  String? _pickPreviewUrl(String docId, Map<String, dynamic> data) {
+    // Users/{uid}/docs/Passport  field: "Passport" = downloadURL
+    final preferredKeys = <String>[
+      docId, // "Passport"
+      docId.toLowerCase(), // "passport"
+      'Passport',
+      'passport',
+      'previewUrl',
+      'imageUrl',
+      'url',
+      'coverUrl',
+    ];
+
+    for (final k in preferredKeys) {
+      final v = data[k]?.toString().trim();
+      if (_looksLikeUrl(v)) return v!;
+    }
+
+    // fallback: any url-like field
+    for (final e in data.entries) {
+      final v = e.value?.toString().trim();
+      if (_looksLikeUrl(v)) return v!;
+    }
+
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -701,8 +739,8 @@ class _DocsFromFirestore extends StatelessWidget {
         if (docs.isEmpty) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: mysizes.spacebtwsections),
+              padding:
+                  const EdgeInsets.symmetric(vertical: mysizes.spacebtwsections),
               child: Text(
                 'No documents yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -716,57 +754,143 @@ class _DocsFromFirestore extends StatelessWidget {
 
         final list = docs.map((d) {
           final data = d.data();
+          final previewUrl = _pickPreviewUrl(d.id, data);
+
           return ProfileDocItem(
             id: d.id,
-            title: (data['title'] ?? d.id).toString(),
-            description: (data['description'] ?? '').toString(),
+            title: (data['title'] ?? d.id).toString().trim(),
+            description: (data['description'] ?? '').toString().trim(),
+            previewUrl: previewUrl,
           );
         }).toList();
 
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final doc in list) ...[
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(
-                    doc.title,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: mycolors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  subtitle: Text(
-                    doc.description,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: mycolors.textPrimary,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DocDetailPage(
-                          docTitle: doc.title,
-                          docDescription: doc.description,
-                          ownerName: ownerName,
-                          ownerDob: ownerDob,
-                          ownerCountry: ownerCountry,
-                          previewAsset: null,
-                        ),
+              _DocTileBig(
+                doc: doc,
+                theme: theme,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DocDetailPage(
+                        docTitle: doc.title,
+                        docDescription:
+                            doc.description.isEmpty ? 'Active' : doc.description,
+                        ownerName: ownerName,
+                        ownerDob: ownerDob,
+                        ownerCountry: ownerCountry,
+                        previewAsset: null,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: mysizes.spacebtwitems),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+/// ✅ Big Doc card (same style as Cards)
+class _DocTileBig extends StatelessWidget {
+  const _DocTileBig({
+    required this.doc,
+    required this.theme,
+    required this.onTap,
+  });
+
+  final ProfileDocItem doc;
+  final ThemeData theme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasNetworkImage =
+        doc.previewUrl != null && doc.previewUrl!.trim().isNotEmpty;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 1.6,
+              child: hasNetworkImage
+                  ? Image.network(
+                      doc.previewUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: mycolors.bgPrimary,
+                          alignment: Alignment.center,
+                          child: const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) {
+                        return Container(
+                          color: mycolors.bgPrimary,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${doc.title} Preview',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: mycolors.textPrimary,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: mycolors.bgPrimary,
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${doc.title} Preview',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: mycolors.textPrimary,
+                        ),
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: SizedBox(
+                width: double.infinity,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      doc.title,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: mycolors.textPrimary,
+                        fontSize: mysizes.fontSm,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
