@@ -1,5 +1,9 @@
 // lib/features/authentication/screen/profile/card_detail_page.dart
 import 'dart:convert';
+import 'dart:ui' as ui;
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,9 +11,10 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-// ✅ Firebase
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// ✅ PDF + Save/Print as PDF dialog
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 class CardDetailPage extends StatefulWidget {
   const CardDetailPage({
@@ -26,7 +31,7 @@ class CardDetailPage extends StatefulWidget {
   final String cardTitle;
   final String cardIdLabel;
 
-  // These are still accepted (fallback), but page will fetch from Firestore too.
+  // Fallback values if Firestore fields not found
   final String ownerName;
   final String ownerDob;
   final String ownerCountry;
@@ -45,10 +50,10 @@ class _CardDetailPageState extends State<CardDetailPage> {
   String? _fetchedImageUrl;
   bool _loadingImage = false;
 
-  /// ✅ store whole card document so details can be shown
+  /// Card document fields
   Map<String, dynamic>? _cardData;
 
-  /// ✅ favorites state (stored in Firestore)
+  /// Favorites state
   bool _isFavorite = false;
   bool _loadingFavorite = true;
 
@@ -59,10 +64,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
     final hasIncomingUrl =
         widget.imageUrl != null && widget.imageUrl!.trim().isNotEmpty;
 
-    // Always fetch details; fetch image only if not passed in.
     _autoFetchCardFromFirestore(fetchImage: !hasIncomingUrl);
-
-    // Load favorite state
     _loadFavorite();
   }
 
@@ -79,7 +81,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
   String? _extractAnyUrl(Map<String, dynamic>? data) {
     if (data == null) return null;
 
-    // Try common keys first (case variants included)
     const keysToTry = [
       'imageUrl',
       'imageURL',
@@ -101,7 +102,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
       if (_looksLikeUrl(v)) return v!.trim();
     }
 
-    // Fallback: scan all values, pick first that looks like a URL
     for (final entry in data.entries) {
       final v = entry.value?.toString();
       if (_looksLikeUrl(v)) return v!.trim();
@@ -120,7 +120,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
     _toast(toastMsg);
   }
 
-  /// Stable key for favorites document id
   String _favoriteKey() {
     final t = widget.cardTitle.trim().toLowerCase();
     if (t.contains('driving')) return 'driving_license';
@@ -128,28 +127,24 @@ class _CardDetailPageState extends State<CardDetailPage> {
     return t.replaceAll(RegExp(r'\s+'), '_');
   }
 
-  /// ✅ stable card docId stored inside QR
   String _cardDocIdForVerify() {
     final t = widget.cardTitle.trim().toLowerCase();
-
-    // ✅ Make Driving License QR different from IC QR
-    if (t.contains('driving')) return 'Driving License'; // matches your Firestore doc id
-
-    // ✅ IC/MyKad QR
+    if (t.contains('driving')) return 'Driving License';
     if (t == 'mykad' || t == 'ic') return 'IC';
-
     return widget.cardTitle.trim();
   }
 
-  /// ✅ build secure QR payload (NO personal info)
+  /// QR payload (VerificationPage jsonDecode expects JSON)
   String _buildVerificationQrData() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return ''; // user not logged in
+    if (uid == null) return '';
     return jsonEncode({
       'type': 'kitaid_verify',
+      'kind': 'card',
       'uid': uid,
       'cardId': _cardDocIdForVerify(),
       'v': 1,
+      'ts': DateTime.now().millisecondsSinceEpoch,
     });
   }
 
@@ -169,10 +164,9 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
       final t = widget.cardTitle.trim().toLowerCase();
 
-      // Try multiple possible docIds (because sometimes naming differs)
       final List<String> docCandidates = t.contains('driving')
           ? [
-              'Driving License', // ✅ matches your screenshot doc id
+              'Driving License',
               'driving license',
               'Driving Licence',
               'driving licence',
@@ -213,7 +207,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
       if (!mounted) return;
       setState(() {
-        _cardData = data; // ✅ store details
+        _cardData = data;
         if (fetchImage) _fetchedImageUrl = url;
         _loadingImage = false;
       });
@@ -271,7 +265,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
     final key = _favoriteKey();
     final newValue = !_isFavorite;
 
-    // Optimistic UI
     setState(() => _isFavorite = newValue);
 
     try {
@@ -284,6 +277,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
       if (newValue) {
         await ref.set({
           'isFavorite': true,
+          'type': 'card',
           'cardTitle': widget.cardTitle,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -295,8 +289,151 @@ class _CardDetailPageState extends State<CardDetailPage> {
     } catch (e) {
       debugPrint('❌ Favorite toggle failed: $e');
       if (!mounted) return;
-      setState(() => _isFavorite = !newValue); // rollback
+      setState(() => _isFavorite = !newValue);
       _toast('Failed to update favorite');
+    }
+  }
+
+  // -----------------------
+  // PDF export (Share -> Save as PDF)
+  // -----------------------
+  Future<void> _shareAsPdf({
+    required String title,
+    required String qrData,
+    required List<_DetailItem> details,
+    String? networkImageUrl,
+    String? assetImagePath,
+  }) async {
+    try {
+      final doc = pw.Document();
+
+      // Card image (optional)
+      pw.ImageProvider? cardImg;
+      if (networkImageUrl != null && networkImageUrl.trim().isNotEmpty) {
+        cardImg = await networkImage(networkImageUrl.trim());
+      } else if (assetImagePath != null && assetImagePath.trim().isNotEmpty) {
+        final bytes = await rootBundle.load(assetImagePath.trim());
+        cardImg = pw.MemoryImage(bytes.buffer.asUint8List());
+      }
+
+      // QR image bytes
+      final qrPainter = QrPainter(
+        data: qrData.isEmpty ? 'not_logged_in' : qrData,
+        version: QrVersions.auto,
+        gapless: true,
+      );
+      final ui.Image qrUiImage = await qrPainter.toImage(500);
+      final byteData =
+          await qrUiImage.toByteData(format: ui.ImageByteFormat.png);
+      final qrBytes = byteData!.buffer.asUint8List();
+      final qrImg = pw.MemoryImage(qrBytes);
+
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) {
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  title,
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Expanded(
+                      child: pw.Container(
+                        height: 160,
+                        decoration: pw.BoxDecoration(
+                          border: pw.Border.all(width: 1),
+                          borderRadius: pw.BorderRadius.circular(10),
+                        ),
+                        child: cardImg == null
+                            ? pw.Center(child: pw.Text('No image'))
+                            : pw.ClipRRect(
+                                horizontalRadius: 10,
+                                verticalRadius: 10,
+                                child: pw.Image(cardImg, fit: pw.BoxFit.cover),
+                              ),
+                      ),
+                    ),
+                    pw.SizedBox(width: 16),
+                    pw.Container(
+                      width: 140,
+                      padding: const pw.EdgeInsets.all(8),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(width: 1),
+                        borderRadius: pw.BorderRadius.circular(10),
+                      ),
+                      child: pw.Image(qrImg),
+                    ),
+                  ],
+                ),
+
+                pw.SizedBox(height: 18),
+                pw.Text(
+                  'Details',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+
+                pw.Table(
+                  border: pw.TableBorder.all(width: 0.7),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(2),
+                    1: const pw.FlexColumnWidth(3),
+                  },
+                  children: [
+                    for (final d in details)
+                      pw.TableRow(
+                        children: [
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              d.label,
+                              style: pw.TextStyle(
+                                fontWeight: pw.FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          pw.Padding(
+                            padding: const pw.EdgeInsets.all(8),
+                            child: pw.Text(
+                              d.value.trim().isEmpty ? '-' : d.value.trim(),
+                              style: const pw.TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      final bytes = await doc.save();
+
+      // ✅ System dialog -> Save as PDF / Print / Share
+      await Printing.layoutPdf(
+        onLayout: (format) async => bytes,
+        name: '${title.replaceAll(' ', '_')}_details.pdf',
+      );
+    } catch (e) {
+      debugPrint('❌ PDF export error: $e');
+      _toast('PDF export failed');
     }
   }
 
@@ -307,7 +444,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // ✅ QR payload for police to scan (owner should not open verification)
     final qrData = _buildVerificationQrData();
 
     final incomingUrl =
@@ -368,7 +504,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : hasNetworkImage && networkUrl != null
+                    : (hasNetworkImage && networkUrl != null)
                         ? Image.network(
                             networkUrl,
                             fit: BoxFit.cover,
@@ -403,41 +539,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
             const SizedBox(height: 14),
 
-            // ================= ACTIONS =================
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () async {
-                    final all =
-                        details.map((e) => '${e.label}: ${e.value}').join('\n');
-                    await _copyText(all, toastMsg: 'Copied all details');
-                  },
-                  icon: const Icon(Icons.copy),
-                  color: mycolors.textPrimary,
-                  tooltip: 'Copy all',
-                ),
-                IconButton(
-                  onPressed: () async {
-                    final all =
-                        details.map((e) => '${e.label}: ${e.value}').join('\n');
-                    await _copyText(all, toastMsg: 'Copied for sharing');
-                  },
-                  icon: const Icon(Icons.ios_share),
-                  color: mycolors.textPrimary,
-                  tooltip: 'Share',
-                ),
-                IconButton(
-                  onPressed: _loadingFavorite ? null : _toggleFavorite,
-                  icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
-                  color: _isFavorite ? mycolors.Primary : mycolors.textPrimary,
-                  tooltip: 'Favorite',
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // ================= QR ONLY (POLICE SCAN) =================
+            // ================= QR (POLICE SCAN) =================
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
@@ -456,7 +558,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
             const SizedBox(height: 18),
 
-            // ================= DETAILS =================
+            // ================= DETAILS TITLE + ACTIONS =================
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -468,21 +570,54 @@ class _CardDetailPageState extends State<CardDetailPage> {
                     fontSize: mysizes.fontMd,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    final all =
-                        details.map((e) => '${e.label}: ${e.value}').join('\n');
-                    await _copyText(all, toastMsg: 'Copied');
-                  },
-                  icon: const Icon(Icons.copy, size: 18),
-                  label: const Text('Copy',
-                  style: TextStyle(fontSize: mysizes.fontSm),),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () async {
+                        final all =
+                            details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        await _copyText(all, toastMsg: 'Copied all details');
+                      },
+                      icon: const Icon(Icons.copy, size: 20),
+                      color: mycolors.textPrimary,
+                      tooltip: 'Copy all',
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () async {
+                        await _shareAsPdf(
+                          title: widget.cardTitle,
+                          qrData: qrData,
+                          details: details,
+                          networkImageUrl: networkUrl,
+                          assetImagePath: widget.imageAsset,
+                        );
+                      },
+                      icon: const Icon(Icons.ios_share, size: 20),
+                      color: mycolors.textPrimary,
+                      tooltip: 'Save as PDF',
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: _loadingFavorite ? null : _toggleFavorite,
+                      icon: Icon(
+                        _isFavorite ? Icons.star : Icons.star_border,
+                        size: 22,
+                      ),
+                      color:
+                          _isFavorite ? mycolors.Primary : mycolors.textPrimary,
+                      tooltip: 'Favorite',
+                    ),
+                  ],
                 ),
               ],
             ),
 
             const SizedBox(height: 10),
 
+            // ================= DETAILS BOX =================
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -529,7 +664,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
     final t = widget.cardTitle.trim().toLowerCase();
     final data = _cardData ?? {};
 
-    // ✅ helper: try multiple keys, return first non-empty
     String pickAny(List<String> keys, String fallback) {
       for (final k in keys) {
         final v = data[k];
@@ -543,26 +677,26 @@ class _CardDetailPageState extends State<CardDetailPage> {
     if (t == 'mykad' || t == 'ic') {
       return [
         _DetailItem('Name', pickAny(['name', 'Name'], widget.ownerName)),
-        _DetailItem('Date of Birth', pickAny(['dob', 'DOB'], widget.ownerDob)),
-        _DetailItem('Nationality',
-            pickAny(['nationality', 'Nationality'], widget.ownerCountry)),
-        _DetailItem('MyKad No',
-            pickAny(['mykadNo', 'mykad_no', 'icNo', 'ic_no'], _onlyId(widget.cardIdLabel))),
+        _DetailItem(
+          'Date of Birth',
+          pickAny(['dob', 'DOB', 'Date of Birth', 'date of birth'], widget.ownerDob),
+        ),
+        _DetailItem(
+          'Nationality',
+          pickAny(['nationality', 'Nationality', 'country', 'Country'], widget.ownerCountry),
+        ),
+        _DetailItem(
+          'MyKad No',
+          pickAny(['mykadNo', 'mykad_no', 'icNo', 'ic_no'], _onlyId(widget.cardIdLabel)),
+        ),
       ];
     }
 
-    // ✅ Driving License fields EXACTLY like Firestore screenshot
     if (t.contains('driving')) {
       return [
         _DetailItem('Name', pickAny(['Name', 'name'], widget.ownerName)),
-        _DetailItem(
-          'Address',
-          pickAny(['address', 'Address'], ''),
-        ),
-        _DetailItem(
-          'Class',
-          pickAny(['class', 'Class'], ''),
-        ),
+        _DetailItem('Address', pickAny(['address', 'Address'], '')),
+        _DetailItem('Class', pickAny(['class', 'Class'], '')),
         _DetailItem(
           'Identity No',
           pickAny(
@@ -585,10 +719,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
         ),
         _DetailItem(
           'Validity',
-          pickAny(
-            ['validity', 'Validity', 'validFromTo', 'valid_from_to'],
-            '',
-          ),
+          pickAny(['validity', 'Validity', 'validFromTo', 'valid_from_to'], ''),
         ),
       ];
     }
@@ -626,7 +757,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
                   fontSize: mysizes.fontMd,
-                  fontWeight: FontWeight.w500
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

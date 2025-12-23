@@ -44,11 +44,15 @@ class ProfileDocItem {
   /// Passport cover / doc preview URL
   final String? previewUrl;
 
+  /// ✅ Passport number from Firestore (e.g. field: "passport no")
+  final String? passportNo;
+
   const ProfileDocItem({
     required this.id,
     required this.title,
     required this.description,
     this.previewUrl,
+    this.passportNo,
   });
 }
 
@@ -367,7 +371,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 },
               ),
       ),
-
       bottomNavigationBar: KitaBottomNav(
         currentIndex: 4,
         onTap: (index) {
@@ -672,6 +675,7 @@ class _CardTile extends StatelessWidget {
 /// ---------------------------
 /// DOCS FROM FIRESTORE
 /// ✅ Big cards like Cards (Passport cover as preview)
+/// ✅ Passport No read from Firebase field: "passport no"
 /// ---------------------------
 class _DocsFromFirestore extends StatelessWidget {
   const _DocsFromFirestore({
@@ -693,6 +697,16 @@ class _DocsFromFirestore extends StatelessWidget {
     return s.startsWith('http://') || s.startsWith('https://');
   }
 
+  String _pick(Map<String, dynamic> data, List<String> keys, String fallback) {
+    for (final k in keys) {
+      final v = data[k];
+      if (v == null) continue;
+      final s = v.toString().trim();
+      if (s.isNotEmpty) return s;
+    }
+    return fallback;
+  }
+
   String? _pickPreviewUrl(String docId, Map<String, dynamic> data) {
     // Users/{uid}/docs/Passport  field: "Passport" = downloadURL
     final preferredKeys = <String>[
@@ -707,15 +721,28 @@ class _DocsFromFirestore extends StatelessWidget {
     ];
 
     final direct = data['Passport']?.toString().trim();
-      if (_looksLikeUrl(direct)) return direct!;
+    if (_looksLikeUrl(direct)) return direct!;
 
-    // fallback: any url-like field
     for (final k in preferredKeys) {
       final v = data[k]?.toString().trim();
       if (_looksLikeUrl(v)) return v!;
     }
 
     return null;
+  }
+
+  String? _pickPassportNo(Map<String, dynamic> data) {
+    final v = _pick(
+      data,
+      const [
+        'passport no', // ✅ your Firestore field
+        'Passport No',
+        'passport_no',
+        'passportNo',
+      ],
+      '',
+    );
+    return v.isEmpty ? null : v;
   }
 
   @override
@@ -754,11 +781,18 @@ class _DocsFromFirestore extends StatelessWidget {
           final data = d.data();
           final previewUrl = _pickPreviewUrl(d.id, data);
 
+          final title = (data['title'] ?? d.id).toString().trim();
+
+          // ✅ Only read passport number for passport doc
+          final passportNo =
+              title.toLowerCase().contains('passport') ? _pickPassportNo(data) : null;
+
           return ProfileDocItem(
             id: d.id,
-            title: (data['title'] ?? d.id).toString().trim(),
+            title: title,
             description: (data['description'] ?? '').toString().trim(),
             previewUrl: previewUrl,
+            passportNo: passportNo,
           );
         }).toList();
 
@@ -775,7 +809,7 @@ class _DocsFromFirestore extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (_) => DocDetailPage(
                         uid: uid,
-                        docId: doc.id, // ✅ FIX: open the exact doc user tapped
+                        docId: doc.id,
                         docTitle: doc.title,
                         docDescription:
                             doc.description.isEmpty ? 'Active' : doc.description,
@@ -839,21 +873,20 @@ class _DocTileBig extends StatelessWidget {
                       color: mycolors.textPrimary,
                     ),
                   ),
-                  // ✅ Show Passport No ONLY for Passport
+
+                  // ✅ Show Passport No ONLY for Passport (from Firebase)
                   if (doc.title.toLowerCase().contains('passport')) ...[
                     const SizedBox(height: 6),
                     Text(
-                      doc.description.isNotEmpty
-                          ? doc.description
-                          : 'Passport No: -',
+                      'Passport No: ${doc.passportNo ?? '-'}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontSize: mysizes.fontSm,
                         color: mycolors.textSecondary,
                       ),
                     ),
+                  ],
                 ],
-              ],
-            ),
+              ),
             ),
 
             const SizedBox(width: 12),

@@ -8,6 +8,10 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+// ✅ NEW imports (pages you added)
+import 'package:kitaid1/features/authentication/screen/profile/travel_history_page.dart';
+import 'package:kitaid1/features/authentication/screen/profile/passport_history_page.dart';
+
 class DocDetailPage extends StatefulWidget {
   const DocDetailPage({
     super.key,
@@ -253,7 +257,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
           userData: user,
         );
 
-        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode() 
+        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode()
         final qrPayload = <String, dynamic>{
           "type": "kitaid_verify",
           "kind": "doc",
@@ -295,66 +299,128 @@ class _DocDetailPageState extends State<DocDetailPage> {
             child: ListView(
               padding: const EdgeInsets.all(mysizes.defaultspace),
               children: [
-                // ================= ACTIONS =================
+                const SizedBox(height: 6),
+
+                // ================= QR CODE + RIGHT BUTTONS =================
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    IconButton(
-                      onPressed: () async {
-                        final all = details
-                            .map((e) => '${e.label}: ${e.value}')
-                            .join('\n');
-                        await _copyText(all, toastMsg: 'Copied all details');
-                      },
-                      icon: const Icon(Icons.copy),
-                      color: mycolors.textPrimary,
-                      tooltip: 'Copy all',
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Share (TODO)')),
-                        );
-                      },
-                      icon: const Icon(Icons.ios_share),
-                      color: mycolors.textPrimary,
-                    ),
-                    IconButton(
-                      onPressed: () => _toggleFavorite(
-                        ownerName: ownerName,
-                        ownerDob: ownerDob,
-                        ownerCountry: ownerCountry,
+                    // QR (left)
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: mycolors.borderprimary),
                       ),
-                      icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
-                      color:
-                          _isFavorite ? mycolors.Primary : mycolors.textPrimary,
+                      child: QrImageView(
+                        data: qrData,
+                        size: 120,
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Buttons (right)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(
+                            height: 55,
+                            child: OutlinedButton.icon(
+                              onPressed: _isPassportDoc()
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => TravelHistoryPage(
+                                            uid: widget.uid,
+                                            docId: 'Passport',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Travel History is available for Passport only.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              icon: const Icon(Icons.flight_takeoff, size: 18),
+                              label: Text(
+                                'Travel History',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: mysizes.fontSm,
+                                  fontWeight: FontWeight.w700,
+                                  color: mycolors.Primary,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: mycolors.borderprimary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 55,
+                            child: OutlinedButton.icon(
+                              onPressed: _isPassportDoc()
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PassportHistoryPage(
+                                            uid: widget.uid,
+                                            docId: 'Passport',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : () {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Passport History is available for Passport only.',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              icon: const Icon(Icons.history, size: 18),
+                              label: Text(
+                                'Passport History',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontSize: mysizes.fontSm,
+                                  fontWeight: FontWeight.w700,
+                                  color: mycolors.Primary,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: mycolors.borderprimary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                backgroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 10),
-
-                // ================= QR CODE =================
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: mycolors.borderprimary),
-                    ),
-                    child: QrImageView(
-                      data: qrData,
-                      size: 120,
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: 18),
 
-                // ================= DETAILS TITLE + COPY =================
+                // ================= DETAILS TITLE + ACTIONS (moved here) =================
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Details',
@@ -364,15 +430,42 @@ class _DocDetailPageState extends State<DocDetailPage> {
                         fontSize: mysizes.fontMd,
                       ),
                     ),
-                    TextButton.icon(
+                    const Spacer(),
+
+                    // Copy all (icon)
+                    IconButton(
+                      tooltip: 'Copy all',
                       onPressed: () async {
-                        final all = details
-                            .map((e) => '${e.label}: ${e.value}')
-                            .join('\n');
-                        await _copyText(all, toastMsg: 'Copied');
+                        final all =
+                            details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        await _copyText(all, toastMsg: 'Copied all details');
                       },
-                      icon: const Icon(Icons.copy, size: 18),
-                      label: const Text('Copy'),
+                      icon: const Icon(Icons.copy),
+                      color: mycolors.textPrimary,
+                    ),
+
+                    // Share (icon)
+                    IconButton(
+                      tooltip: 'Share',
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Share (TODO)')),
+                        );
+                      },
+                      icon: const Icon(Icons.ios_share),
+                      color: mycolors.textPrimary,
+                    ),
+
+                    // Favorite (icon)
+                    IconButton(
+                      tooltip: 'Favorite',
+                      onPressed: () => _toggleFavorite(
+                        ownerName: ownerName,
+                        ownerDob: ownerDob,
+                        ownerCountry: ownerCountry,
+                      ),
+                      icon: Icon(_isFavorite ? Icons.star : Icons.star_border),
+                      color: _isFavorite ? mycolors.Primary : mycolors.textPrimary,
                     ),
                   ],
                 ),

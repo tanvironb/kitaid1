@@ -13,5 +13,6 @@ Future<void> main() async {
   print('🔥 Firebase connected: ${Firebase.apps.first.name}');
 
   runApp(const kitaid());
+
 }
 
