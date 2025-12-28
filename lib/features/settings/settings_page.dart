@@ -25,6 +25,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _bioEnabled = false;
   bool _bioLoading = false;
 
+  // ✅ NEW: detect Face availability for UI label/icon
+  bool _bioIsFace = false;
+
   @override
   void initState() {
     super.initState();
@@ -33,14 +36,23 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadBiometric() async {
     final bio = BiometricAuthService.instance;
+
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
+
+    // Face detection only matters when supported
+    final isFace = supported ? await bio.supportsFace() : false;
 
     if (!mounted) return;
     setState(() {
       _bioSupported = supported;
       _bioEnabled = enabled;
+      _bioIsFace = isFace;
     });
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _toggleBiometric(bool value) async {
@@ -50,33 +62,50 @@ class _SettingsPageState extends State<SettingsPage> {
 
     setState(() => _bioLoading = true);
 
-    // if turning ON -> verify with biometric once
+    // Re-check support at toggle time
+    final supported = await bio.isDeviceSupported();
+    if (!supported) {
+      if (!mounted) return;
+      setState(() => _bioLoading = false);
+      _snack('Biometric is not supported on this device.');
+      return;
+    }
+
+    // If turning ON -> verify once
     if (value) {
-      final ok =
-          await bio.authenticate(reason: 'Enable biometric login for KitaID');
+      final enrolled = await bio.hasEnrolledBiometrics();
+      if (!enrolled) {
+        if (!mounted) return;
+        setState(() => _bioLoading = false);
+        _snack('No fingerprint/Face ID enrolled. Please add it in phone settings.');
+        return;
+      }
+
+      final ok = await bio.authenticate(
+        reason: _bioIsFace ? 'Enable Face ID login for KitaID' : 'Enable biometric login for KitaID',
+      );
+
       if (!ok) {
         if (!mounted) return;
         setState(() => _bioLoading = false);
+        _snack('Biometric verification failed.');
         return;
       }
     }
 
     await bio.setEnabled(value);
 
+    // Refresh face availability for correct icon/label
+    final isFace = await bio.supportsFace();
+
     if (!mounted) return;
     setState(() {
       _bioEnabled = value;
+      _bioIsFace = isFace;
       _bioLoading = false;
     });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text(value ? 'Biometric login enabled' : 'Biometric login disabled'),
-        ),
-      );
-    }
+    _snack(value ? 'Biometric login enabled' : 'Biometric login disabled');
   }
 
   String t(String key) {
@@ -106,12 +135,19 @@ class _SettingsPageState extends State<SettingsPage> {
         return bm ? 'Kenalan' : 'Contact';
       case 'sign_out':
         return bm ? 'Log keluar' : 'Sign Out';
-      case 'biometric':
+
+      // ✅ NEW strings
+      case 'face_login':
+        return bm ? 'Log Masuk Face ID' : 'Face ID Login';
+      case 'bio_login':
         return bm ? 'Log Masuk Biometrik' : 'Biometric Login';
-      case 'biometric_desc':
+      case 'face_desc':
+        return bm ? 'Guna Face ID untuk log masuk' : 'Use Face ID to login';
+      case 'bio_desc':
         return bm
             ? 'Guna cap jari / Face ID untuk log masuk'
             : 'Use fingerprint / Face ID to login';
+
       default:
         return key;
     }
@@ -121,24 +157,18 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _lang = lang);
   }
 
-  /// ✅ REAL SIGN OUT: Firebase session will be cleared.
   Future<void> _signOut() async {
     try {
-      // (Optional) If you want, you can disable biometric toggle on signout
-      // so next user is not confused.
+      // Optional: Disable biometric flag on sign out (your choice)
       await BiometricAuthService.instance.setEnabled(false);
 
       await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
-
-      // ✅ Clear nav stack and go to login
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign out failed: $e')),
-      );
+      _snack('Sign out failed: $e');
     }
   }
 
@@ -175,8 +205,8 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(ctx).pop(); // close dialog
-                await _signOut(); // ✅ REAL sign out
+                Navigator.of(ctx).pop();
+                await _signOut();
               },
               child: const Text(
                 "Yes",
@@ -191,13 +221,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final label = _bioIsFace ? t('face_login') : t('bio_login');
+    final subtitle = _bioIsFace ? t('face_desc') : t('bio_desc');
+    final icon = _bioIsFace ? Icons.face : Icons.fingerprint;
+
     return Scaffold(
       backgroundColor: mycolors.bgPrimary,
       appBar: AppBar(
         title: Text(
           t('title'),
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w600),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
         backgroundColor: mycolors.Primary,
         elevation: 0,
@@ -206,7 +239,6 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: [
-          // LANGUAGE OPTION
           _SettingsTileContainer(
             child: _LanguageRow(
               icon: Icons.language,
@@ -220,7 +252,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const SizedBox(height: 28),
 
-          // ACCOUNT
           Text(
             t('account'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -231,12 +262,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 8),
 
-          // ✅ BIOMETRIC TOGGLE (only if supported)
           if (_bioSupported)
             _SettingsSwitchTile(
-              icon: Icons.fingerprint,
-              label: t('biometric'),
-              subtitle: t('biometric_desc'),
+              icon: icon,
+              label: label,
+              subtitle: subtitle,
               value: _bioEnabled,
               loading: _bioLoading,
               onChanged: _toggleBiometric,
@@ -260,7 +290,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const SizedBox(height: 28),
 
-          // ABOUT
           Text(
             t('about'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -324,9 +353,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-//
-// ─── LANGUAGE ROW ───────────────────────────────────────────────────────────────
-//
 class _LanguageRow extends StatelessWidget {
   const _LanguageRow({
     required this.icon,
@@ -355,17 +381,17 @@ class _LanguageRow extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: mycolors.textPrimary,
                 fontWeight: FontWeight.w600,
-                fontSize: mysizes.fontMd,
+                fontSize: mysizes.fontSm,
               ),
         ),
         const Spacer(),
-        _LangPill(
+        _LangChip(
           text: bmText,
           selected: lang == AppLanguage.bm,
           onTap: () => onChanged(AppLanguage.bm),
         ),
         const SizedBox(width: 8),
-        _LangPill(
+        _LangChip(
           text: enText,
           selected: lang == AppLanguage.en,
           onTap: () => onChanged(AppLanguage.en),
@@ -375,8 +401,8 @@ class _LanguageRow extends StatelessWidget {
   }
 }
 
-class _LangPill extends StatelessWidget {
-  const _LangPill({
+class _LangChip extends StatelessWidget {
+  const _LangChip({
     required this.text,
     required this.selected,
     required this.onTap,
@@ -389,24 +415,25 @@ class _LangPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(999),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? mycolors.Primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          color: selected ? mycolors.Primary : Colors.white,
+          borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? mycolors.Primary : mycolors.borderprimary,
-            width: 1.5,
+            color: selected
+                ? mycolors.Primary
+                : mycolors.textPrimary.withOpacity(0.15),
           ),
         ),
         child: Text(
           text,
           style: TextStyle(
-            fontWeight: FontWeight.w700,
             color: selected ? Colors.white : mycolors.textPrimary,
-            fontSize: mysizes.fontSm,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -416,7 +443,6 @@ class _LangPill extends StatelessWidget {
 
 class _SettingsTileContainer extends StatelessWidget {
   const _SettingsTileContainer({required this.child});
-
   final Widget child;
 
   @override
@@ -489,7 +515,6 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-// ✅ NEW SWITCH TILE (same style)
 class _SettingsSwitchTile extends StatelessWidget {
   const _SettingsSwitchTile({
     required this.icon,

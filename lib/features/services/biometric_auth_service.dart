@@ -9,11 +9,45 @@ class BiometricAuthService {
 
   final LocalAuthentication _auth = LocalAuthentication();
 
+  /// ✅ More reliable support check:
+  /// - Some devices return canCheckBiometrics=false even if device supports biometrics
+  /// - We also check getAvailableBiometrics()
   Future<bool> isDeviceSupported() async {
     try {
       final supported = await _auth.isDeviceSupported();
       final canCheck = await _auth.canCheckBiometrics;
-      return supported && canCheck;
+      final available = await _auth.getAvailableBiometrics();
+      return supported && (canCheck || available.isNotEmpty);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// ✅ True if at least one biometric is enrolled/available
+  Future<bool> hasEnrolledBiometrics() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      return available.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// ✅ UI helper: Face supported/enrolled?
+  Future<bool> supportsFace() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      return available.contains(BiometricType.face);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// ✅ UI helper: Fingerprint supported/enrolled?
+  Future<bool> supportsFingerprint() async {
+    try {
+      final available = await _auth.getAvailableBiometrics();
+      return available.contains(BiometricType.fingerprint);
     } catch (_) {
       return false;
     }
@@ -29,6 +63,7 @@ class BiometricAuthService {
     await prefs.setBool(_prefKeyEnabled, value);
   }
 
+  /// ✅ This will trigger Face ID on iOS / Face Unlock on Android automatically if available.
   Future<bool> authenticate({String reason = 'Verify your identity'}) async {
     try {
       final ok = await _auth.authenticate(
@@ -36,6 +71,7 @@ class BiometricAuthService {
         options: const AuthenticationOptions(
           biometricOnly: true,
           stickyAuth: true,
+          useErrorDialogs: true,
         ),
       );
       return ok;

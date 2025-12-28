@@ -1,5 +1,6 @@
 // lib/features/authentication/screen/profile/doc_detail_page.dart
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+
+// ✅ PDF share imports (same behavior as card page)
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 // ✅ NEW imports (pages you added)
 import 'package:kitaid1/features/authentication/screen/profile/travel_history_page.dart';
@@ -67,6 +73,149 @@ class _DocDetailPageState extends State<DocDetailPage> {
   Future<void> _copyText(String text, {String toastMsg = 'Copied'}) async {
     await Clipboard.setData(ClipboardData(text: text));
     _toast(toastMsg);
+  }
+
+  // -----------------------
+  // Share as PDF (same as card page behavior) + ✅ QR inside PDF
+  // -----------------------
+  Future<void> _shareAsPdf({
+    required String title,
+    required List<_DetailItem> details,
+    required String qrData,
+  }) async {
+    final pdf = pw.Document();
+
+    // Generate QR PNG bytes from qr_flutter
+    final painter = QrPainter(
+      data: qrData,
+      version: QrVersions.auto,
+      gapless: true,
+    );
+
+    final ui.Image qrImg = await painter.toImage(600);
+    final byteData = await qrImg.toByteData(format: ui.ImageByteFormat.png);
+
+    if (byteData == null) {
+      // Fallback: still export details even if QR generation fails
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) => _buildPdfContent(
+            title: title,
+            details: details,
+            qrMemory: null,
+          ),
+        ),
+      );
+    } else {
+      final qrBytes = byteData.buffer.asUint8List();
+      final qrMemory = pw.MemoryImage(qrBytes);
+
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) => _buildPdfContent(
+            title: title,
+            details: details,
+            qrMemory: qrMemory,
+          ),
+        ),
+      );
+    }
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+    );
+  }
+
+  pw.Widget _buildPdfContent({
+    required String title,
+    required List<_DetailItem> details,
+    required pw.MemoryImage? qrMemory,
+  }) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        // Title
+        pw.Text(
+          title,
+          style: pw.TextStyle(
+            fontSize: 22,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+        pw.SizedBox(height: 16),
+
+        // QR (NEW)
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Container(
+              width: 140,
+              height: 140,
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(width: 1),
+                borderRadius: pw.BorderRadius.circular(12),
+              ),
+              child: qrMemory == null
+                  ? pw.Center(child: pw.Text('QR unavailable'))
+                  : pw.Image(qrMemory, fit: pw.BoxFit.contain),
+            ),
+            pw.SizedBox(width: 16),
+            pw.Expanded(
+              child: pw.Text(
+                'Scan to verify this document in KitaID.',
+                style: const pw.TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+
+        pw.SizedBox(height: 20),
+
+        // Details
+        pw.Text(
+          'Details',
+          style: pw.TextStyle(
+            fontSize: 16,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+        pw.SizedBox(height: 10),
+
+        ...details.map(
+          (e) => pw.Container(
+            padding: const pw.EdgeInsets.symmetric(vertical: 8),
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(
+                bottom: pw.BorderSide(width: 0.5),
+              ),
+            ),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Text(
+                    e.label,
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                  ),
+                ),
+                pw.Expanded(
+                  flex: 5,
+                  child: pw.Text(
+                    e.value.trim().isEmpty ? '-' : e.value.trim(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   // -----------------------
@@ -319,107 +468,89 @@ class _DocDetailPageState extends State<DocDetailPage> {
                       ),
                     ),
 
-                    const SizedBox(width: 12),
+                    // ✅ Only show these buttons for Passport
+                    if (_isPassportDoc()) ...[
+                      const SizedBox(width: 12),
 
-                    // Buttons (right)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            height: 55,
-                            child: OutlinedButton.icon(
-                              onPressed: _isPassportDoc()
-                                  ? () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => TravelHistoryPage(
-                                            uid: widget.uid,
-                                            docId: 'Passport',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Travel History is available for Passport only.',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              icon: const Icon(Icons.flight_takeoff, size: 18),
-                              label: Text(
-                                'Travel History',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontSize: mysizes.fontSm,
-                                  fontWeight: FontWeight.w700,
-                                  color: mycolors.Primary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: 55,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TravelHistoryPage(
+                                        uid: widget.uid,
+                                        docId: 'Passport',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.flight_takeoff, size: 18),
+                                label: Text(
+                                  'Travel History',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: mysizes.fontSm,
+                                    fontWeight: FontWeight.w700,
+                                    color: mycolors.Primary,
+                                  ),
                                 ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: mycolors.borderprimary),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: mycolors.borderprimary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  backgroundColor: Colors.white,
                                 ),
-                                backgroundColor: Colors.white,
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 55,
-                            child: OutlinedButton.icon(
-                              onPressed: _isPassportDoc()
-                                  ? () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PassportHistoryPage(
-                                            uid: widget.uid,
-                                            docId: 'Passport',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  : () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Passport History is available for Passport only.',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              icon: const Icon(Icons.history, size: 18),
-                              label: Text(
-                                'Passport History',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontSize: mysizes.fontSm,
-                                  fontWeight: FontWeight.w700,
-                                  color: mycolors.Primary,
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 55,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PassportHistoryPage(
+                                        uid: widget.uid,
+                                        docId: 'Passport',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.history, size: 18),
+                                label: Text(
+                                  'Passport History',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontSize: mysizes.fontSm,
+                                    fontWeight: FontWeight.w700,
+                                    color: mycolors.Primary,
+                                  ),
                                 ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: mycolors.borderprimary),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: mycolors.borderprimary),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  backgroundColor: Colors.white,
                                 ),
-                                backgroundColor: Colors.white,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
 
                 const SizedBox(height: 18),
 
-                // ================= DETAILS TITLE + ACTIONS (moved here) =================
+                // ================= DETAILS TITLE + ACTIONS =================
                 Row(
                   children: [
                     Text(
@@ -444,12 +575,14 @@ class _DocDetailPageState extends State<DocDetailPage> {
                       color: mycolors.textPrimary,
                     ),
 
-                    // Share (icon)
+                    // ✅ Share (PDF like card page) + QR inside PDF
                     IconButton(
                       tooltip: 'Share',
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Share (TODO)')),
+                        _shareAsPdf(
+                          title: widget.docTitle,
+                          details: details,
+                          qrData: qrData,
                         );
                       },
                       icon: const Icon(Icons.ios_share),
@@ -622,15 +755,19 @@ class _DocDetailPageState extends State<DocDetailPage> {
             safe(['place of birth', 'place_of_birth', 'Place of Birth'])),
         _DetailItem('Sex', safe(['sex', 'Sex'])),
         _DetailItem('Type', safe(['type', 'Type'])),
-        _DetailItem('Identity No',
-            safe(['identity no', 'identity_no', 'Identity No'])),
+        _DetailItem(
+            'Identity No', safe(['identity no', 'identity_no', 'Identity No'])),
         _DetailItem('Height', safe(['height', 'Height'])),
         _DetailItem('Issuing Office',
             safe(['issuing office', 'issuing_office', 'Issuing Office'])),
         _DetailItem('Date of Issue',
             safe(['date of issue', 'date_of_issue', 'Date of Issue'])),
-        _DetailItem('Date of Expiry',
-            safe(['date of expiry', 'date_of_expiry', 'Date of Expiry', 'expiry'])),
+        _DetailItem('Date of Expiry', safe([
+          'date of expiry',
+          'date_of_expiry',
+          'Date of Expiry',
+          'expiry'
+        ])),
         _DetailItem('Status', widget.docDescription),
       ];
     }

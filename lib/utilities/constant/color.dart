@@ -33,4 +33,8 @@ static const Color disabledprimary = Color.fromARGB(204, 156, 156, 156);
 
   static get iconColor => null;
 
+  static get neutral100 => null;
+
+  static get neutral200 => null;
+
 }

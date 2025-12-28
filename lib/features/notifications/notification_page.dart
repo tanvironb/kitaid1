@@ -7,7 +7,6 @@ import 'widgets/notification_item.dart';
 import 'notification_controller.dart';
 
 // To creates a stateful page, which means the screen can change over time
-
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -17,7 +16,6 @@ class NotificationPage extends StatefulWidget {
 
 class _NotificationPageState extends State<NotificationPage> {
   final _controller = NotificationController();
-  late Future<List<AppNotification>> _future;
 
   // search + filter option
   final _searchCtrl = TextEditingController();
@@ -27,7 +25,6 @@ class _NotificationPageState extends State<NotificationPage> {
   @override
   void initState() {
     super.initState();
-    _future = _controller.load();
     _searchCtrl.addListener(() {
       setState(() => _query = _searchCtrl.text.trim());
     });
@@ -37,14 +34,6 @@ class _NotificationPageState extends State<NotificationPage> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  // Reloads the notifications list - refresh function
-  Future<void> _refresh() async {
-    setState(() {
-      _future = _controller.load();
-    });
-    await _future;
   }
 
   List<AppNotification> _applyFilters(List<AppNotification> items) {
@@ -89,19 +78,22 @@ class _NotificationPageState extends State<NotificationPage> {
             tooltip: 'Mark all as read',
             icon: const Icon(Icons.done_all_outlined),
             onPressed: () async {
-              // Marks all notifications as read
               await _controller.markAllRead();
-              if (mounted) _refresh(); // Reloads the list with updated colors
+              // ✅ no need to refresh manually; StreamBuilder will update
             },
           ),
         ],
       ),
 
-      // Body with refresh indicator and future builder to load notifications
+      // Body with refresh indicator and stream builder to live-load notifications
       body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<List<AppNotification>>(
-          future: _future,
+        // Pull-to-refresh is optional when streaming, but we keep it for UX.
+        // It simply waits briefly so the indicator feels responsive.
+        onRefresh: () async {
+          await Future.delayed(const Duration(milliseconds: 450));
+        },
+        child: StreamBuilder<List<AppNotification>>(
+          stream: _controller.stream(),
           builder: (context, snapshot) {
             // Shows a spinner while waiting for data, or an error message if loading fails.
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -120,45 +112,45 @@ class _NotificationPageState extends State<NotificationPage> {
               children: [
                 // === SEARCH FIELD (rounded) ===
                 TextField(
-  controller: _searchCtrl,
-  style: const TextStyle(
-    color: mycolors.textPrimary,
-    fontSize: 13, // ✅ smaller typed text
-  ),
-  decoration: InputDecoration(
-    hintText: 'Search',
-    hintStyle: const TextStyle(
-      fontSize: 12, // ✅ smaller hint text
-      color: mycolors.textSecondary, // ✅ change hint color
-    ),
-    prefixIcon: const Icon(
-      Icons.search,
-      size: 18, // ✅ smaller icon
-      color: mycolors.textSecondary,
-    ),
-    filled: true,
-    fillColor: Colors.white,
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 14,
-      vertical: 8, // ✅ reduces height
-    ),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(20), // slightly smaller radius
-      borderSide: const BorderSide(
-        color: mycolors.borderprimary,
-        width: 1.2,
-      ),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(20),
-      borderSide: const BorderSide(
-        color: mycolors.Primary,
-        width: 1.5,
-      ),
-    ),
-  ),
-),
-
+                  controller: _searchCtrl,
+                  style: const TextStyle(
+                    color: mycolors.textPrimary,
+                    fontSize: 13, // ✅ smaller typed text
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    hintStyle: const TextStyle(
+                      fontSize: 12, // ✅ smaller hint text
+                      color: mycolors.textSecondary, // ✅ change hint color
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      size: 18, // ✅ smaller icon
+                      color: mycolors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8, // ✅ reduces height
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius:
+                          BorderRadius.circular(20), // slightly smaller radius
+                      borderSide: const BorderSide(
+                        color: mycolors.borderprimary,
+                        width: 1.2,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(
+                        color: mycolors.Primary,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 12),
 
@@ -166,17 +158,18 @@ class _NotificationPageState extends State<NotificationPage> {
                 Row(
                   children: [
                     ChoiceChip(
-                      label: const Text('All',
-                      style: TextStyle(
+                      label: const Text(
+                        'All',
+                        style: TextStyle(
                           fontSize: 12,
-                        ),),
+                        ),
+                      ),
                       selected: !_showUnreadOnly,
                       onSelected: (v) => setState(() => _showUnreadOnly = !v),
                       selectedColor: mycolors.Primary,
                       labelStyle: TextStyle(
-                        color: !_showUnreadOnly
-                            ? theme.colorScheme.onPrimary
-                            : null,
+                        color:
+                            !_showUnreadOnly ? theme.colorScheme.onPrimary : null,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -187,7 +180,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         style: TextStyle(
                           fontSize: 12,
                         ),
-                        ),
+                      ),
                       selected: _showUnreadOnly,
                       onSelected: (v) => setState(() => _showUnreadOnly = v),
                       selectedColor: mycolors.Primary,
@@ -218,10 +211,9 @@ class _NotificationPageState extends State<NotificationPage> {
                         Text(
                           'No notifications found',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontSize: 12, // 🔽 smaller
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                          
+                            fontSize: 12, // 🔽 smaller
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -250,11 +242,11 @@ class _NotificationPageState extends State<NotificationPage> {
                         data: n,
                         onToggleRead: () async {
                           await _controller.toggle(n.id);
-                          if (mounted) _refresh();
+                          // ✅ stream auto-updates; no manual refresh
                         },
                         onDelete: () async {
                           await _controller.delete(n.id);
-                          if (mounted) _refresh();
+                          // ✅ stream auto-updates; no manual refresh
                         },
                       );
                     },
@@ -285,7 +277,8 @@ class _NotificationPageState extends State<NotificationPage> {
               break;
 
             case 3: // NOTIFICATIONS
-              Navigator.pushNamedAndRemoveUntil(context, '/notifications', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/notifications', (_) => false);
               break;
 
             case 4: // PROFILE

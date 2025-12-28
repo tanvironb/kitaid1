@@ -71,9 +71,14 @@ class _SignUpPageState extends State<SignUpPage> {
 
   /// Normalize to +60XXXXXXXXX
   String _formatMalaysiaPhone(String input) {
-    final digits = input.replaceAll(RegExp(r'\D'), '');
-    return '+60$digits';
+  var digits = input.replaceAll(RegExp(r'\D'), '');
+
+  if (digits.startsWith('0')) {
+    digits = digits.substring(1);
   }
+
+  return '+60$digits';
+}
 
   /// ✅ Normalize ID same as login:
   /// Uppercase + keep only A-Z and 0-9.

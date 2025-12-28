@@ -54,7 +54,9 @@ static const double cardRadiusSm = 10.0; // medium
 static const double cardRadiusXs = 6.0; // medium
 
 //grid view spacing
-static const double gridviewspacing = 16.0; // medium
+static const double gridviewspacing = 16.0;
+
+  static double? get paddingMd => null; // medium
 
 
 // //spacing between words

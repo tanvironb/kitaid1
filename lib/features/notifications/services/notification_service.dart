@@ -1,49 +1,78 @@
-
-import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/app_notification.dart';
 
 class NotificationService {
-  // Creates some fake notifications to display (in a real app, this would come from Firebase)
-  final List<AppNotification> _seed = List.generate(
-    10,
-    (i) => AppNotification(
-      id: 'n$i',
-      title: i == 0 ? 'Welcome to KitaID' : 'Update #$i',
-      body: i == 0 ? 'Thanks for joining. Your account is ready.' : 'Some details about update #$i.',
-      createdAt: DateTime.now().subtract(Duration(minutes: i * 13)),
-      read: i % 3 == 0,
-      category: i == 0 ? 'system' : 'updates',
-    ),
-  );
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
-  // Simulates loading all notifications (with a short delay) and sorts them by newest first
+  String get _uid {
+    final u = _auth.currentUser;
+    if (u == null) throw Exception('User not logged in');
+    return u.uid;
+  }
+
+  CollectionReference<Map<String, dynamic>> _col() {
+    return _db.collection('Users').doc(_uid).collection('notifications');
+  }
+
+  /// Live stream (best for UI)
+  Stream<List<AppNotification>> streamAll() {
+    return _col()
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => _fromDoc(d)).toList());
+  }
+
+  /// One-time fetch (if you still want Future)
   Future<List<AppNotification>> fetchAll() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final list = [..._seed]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return list;
+    final snap = await _col().orderBy('createdAt', descending: true).get();
+    return snap.docs.map((d) => _fromDoc(d)).toList();
   }
-  
-  // Marks all notification as read
+
   Future<void> markAllRead() async {
-    await Future.delayed(const Duration(milliseconds: 150));
-    for (var i = 0; i < _seed.length; i++) {
-      _seed[i] = _seed[i].copyWith(read: true);
+    final snap = await _col().where('read', isEqualTo: false).get();
+    final batch = _db.batch();
+    for (final d in snap.docs) {
+      batch.update(d.reference, {'read': true});
     }
+    await batch.commit();
   }
 
-  // Finds one item by ID and toggles its read status (from true → false or vice versa)
   Future<void> toggleRead(String id) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    final idx = _seed.indexWhere((e) => e.id == id);
-    if (idx != -1) {
-      final cur = _seed[idx];
-      _seed[idx] = cur.copyWith(read: !cur.read);
-    }
+    final ref = _col().doc(id);
+    await _db.runTransaction((tx) async {
+      final doc = await tx.get(ref);
+      if (!doc.exists) return;
+      final cur = (doc.data()?['read'] as bool?) ?? false;
+      tx.update(ref, {'read': !cur});
+    });
   }
 
-  // Removes a notification from the list by its ID
   Future<void> delete(String id) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    _seed.removeWhere((e) => e.id == id);
+    await _col().doc(id).delete();
+  }
+
+  AppNotification _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    final ts = data['createdAt'];
+    DateTime createdAt;
+
+    if (ts is Timestamp) {
+      createdAt = ts.toDate();
+    } else if (ts is String) {
+      createdAt = DateTime.tryParse(ts) ?? DateTime.now();
+    } else {
+      createdAt = DateTime.now();
+    }
+
+    return AppNotification(
+      id: doc.id,
+      title: (data['title'] as String?) ?? '',
+      body: data['body'] as String?,
+      createdAt: createdAt,
+      read: (data['read'] as bool?) ?? false,
+      category: data['category'] as String?,
+    );
   }
 }

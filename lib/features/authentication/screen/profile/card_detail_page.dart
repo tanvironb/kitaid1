@@ -350,7 +350,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                   children: [
                     pw.Expanded(
                       child: pw.Container(
-                        height: 160,
+                        padding: const pw.EdgeInsets.all(8),
                         decoration: pw.BoxDecoration(
                           border: pw.Border.all(width: 1),
                           borderRadius: pw.BorderRadius.circular(10),
@@ -360,7 +360,12 @@ class _CardDetailPageState extends State<CardDetailPage> {
                             : pw.ClipRRect(
                                 horizontalRadius: 10,
                                 verticalRadius: 10,
-                                child: pw.Image(cardImg, fit: pw.BoxFit.cover),
+                                child: pw.Center(
+                                  child: pw.Image(
+                                    cardImg,
+                                    fit: pw.BoxFit.contain, // ✅ full card
+                                  ),
+                                ),
                               ),
                       ),
                     ),

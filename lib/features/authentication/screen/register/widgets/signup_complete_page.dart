@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
+import 'package:kitaid1/features/authentication/screen/login/login.dart';
 
 class SignUpCompletePage extends StatelessWidget {
   const SignUpCompletePage({super.key});
@@ -9,7 +10,7 @@ class SignUpCompletePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: mycolors.Primary, // Blue background
+      backgroundColor: mycolors.Primary,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -19,7 +20,6 @@ class SignUpCompletePage extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ✅ White tick icon
                   const Icon(
                     Icons.check_circle,
                     size: 100,
@@ -27,7 +27,6 @@ class SignUpCompletePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // ✅ White title text
                   const Text(
                     'Verification Complete',
                     style: TextStyle(
@@ -39,7 +38,6 @@ class SignUpCompletePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // ✅ White subtitle text
                   const Text(
                     'Your account has been verified successfully.',
                     style: TextStyle(
@@ -50,12 +48,17 @@ class SignUpCompletePage extends StatelessWidget {
                   ),
                   const SizedBox(height: 40),
 
-                  // ✅ Keep original button color (do not change)
                   SizedBox(
                     width: 180,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.popUntil(context, (r) => r.isFirst);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                          (route) => false,
+                        );
                       },
                       child: const Text('Login'),
                     ),

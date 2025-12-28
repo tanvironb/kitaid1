@@ -18,7 +18,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _controller;
   late final Animation<Offset> _sheetSlide;
   late final Animation<double> _sheetFade;
@@ -33,9 +33,14 @@ class _LoginScreenState extends State<LoginScreen>
   bool _bioEnabled = false;
   bool _bioLoading = false;
 
+  // ✅ NEW: Face ID / Face Unlock UI switch
+  bool _bioIsFace = false;
+
   @override
   void initState() {
     super.initState();
+
+    WidgetsBinding.instance.addObserver(this);
 
     _controller = AnimationController(
       vsync: this,
@@ -55,15 +60,27 @@ class _LoginScreenState extends State<LoginScreen>
     _loadBiometric();
   }
 
+  /// ✅ Reload biometric status when user returns from background / settings
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadBiometric();
+    }
+  }
+
   Future<void> _loadBiometric() async {
     final bio = BiometricAuthService.instance;
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
 
+    // ✅ NEW: detect face for UI
+    final isFace = supported ? await bio.supportsFace() : false;
+
     if (!mounted) return;
     setState(() {
       _bioSupported = supported;
       _bioEnabled = enabled;
+      _bioIsFace = isFace;
     });
   }
 
@@ -71,9 +88,6 @@ class _LoginScreenState extends State<LoginScreen>
   /// - Trim
   /// - Uppercase
   /// - Keep only A-Z and 0-9
-  /// Examples:
-  ///  "050101-10-1010" -> "050101101010"
-  ///  "A02591787" -> "A02591787"
   String _normalizeLoginId(String input) {
     return input.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
@@ -117,7 +131,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     final normalizedId = _normalizeLoginId(rawId);
 
-    // Basic length check (change if you want)
     if (normalizedId.length < 6) {
       _snack('Please enter a valid IC/Passport number.');
       return;
@@ -128,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _loggingIn = true);
 
     try {
-      // 1) Auth login (using ID-as-email mapping)
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: authEmail,
         password: pw,
@@ -139,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen>
         throw FirebaseAuthException(code: 'no-user', message: 'Login failed.');
       }
 
-      // 2) Verify ID against Firestore (prevents “wrong letters still log in”)
       final doc =
           await FirebaseFirestore.instance.collection('Users').doc(uid).get();
       if (!doc.exists) {
@@ -150,12 +161,10 @@ class _LoginScreenState extends State<LoginScreen>
 
       final data = doc.data() ?? {};
 
-      // Prefer new field:
       final storedNormalized = _normalizeLoginId(
         (data['LoginIdNormalized'] ?? data['LoginId'] ?? '').toString(),
       );
 
-      // Backward compatibility with older schema:
       final legacyIc = _normalizeLoginId((data['IC No'] ?? '').toString());
       final legacyPassport =
           _normalizeLoginId((data['Passport No'] ?? '').toString());
@@ -170,14 +179,12 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
 
-      // 3) Load Recent Services after login
       await _loadRecentsAfterLogin(uid);
+      await _loadBiometric();
 
       if (!mounted) return;
       setState(() => _loggingIn = false);
 
-      // ✅ IMPORTANT CHANGE:
-      // Use your app routes instead of pushing Home directly
       Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
@@ -204,23 +211,39 @@ class _LoginScreenState extends State<LoginScreen>
     if (_bioLoading) return;
 
     final bio = BiometricAuthService.instance;
+
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
+    final isFace = supported ? await bio.supportsFace() : false;
 
-    if (!supported || !enabled) {
+    if (!supported) {
+      if (!mounted) return;
+      _snack('Biometric is not supported on this device.');
+      return;
+    }
+
+    if (!enabled) {
       if (!mounted) return;
       _snack('Biometric login is not enabled.');
       return;
     }
 
-    setState(() => _bioLoading = true);
+    setState(() {
+      _bioLoading = true;
+      _bioIsFace = isFace;
+    });
 
-    final ok = await bio.authenticate(reason: 'Login to KitaID');
+    final ok = await bio.authenticate(
+      reason: isFace ? 'Login with Face ID' : 'Login with fingerprint',
+    );
 
     if (!mounted) return;
     setState(() => _bioLoading = false);
 
-    if (!ok) return;
+    if (!ok) {
+      _snack('Biometric verification failed.');
+      return;
+    }
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -228,17 +251,15 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    // ✅ Load recents for biometric login too
     await _loadRecentsAfterLogin(user.uid);
 
     if (!mounted) return;
-
-    // ✅ Same routing approach
     Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _icController.dispose();
     _pwController.dispose();
@@ -285,6 +306,10 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final showBiometricButton = _bioSupported && _bioEnabled;
+
+    final bioIcon = _bioIsFace ? Icons.face : Icons.fingerprint;
+    final bioTooltip =
+        _bioIsFace ? 'Login with Face ID' : 'Login with fingerprint';
 
     return Scaffold(
       body: SafeArea(
@@ -444,10 +469,10 @@ class _LoginScreenState extends State<LoginScreen>
                                       child: CircularProgressIndicator(
                                           strokeWidth: 2),
                                     )
-                                  : const Icon(Icons.fingerprint),
+                                  : Icon(bioIcon),
                               iconSize: 34,
                               color: mycolors.Primary,
-                              tooltip: 'Login with biometrics',
+                              tooltip: bioTooltip,
                             ),
                           ],
                           const SizedBox(height: 16),
@@ -483,7 +508,7 @@ class _LoginScreenState extends State<LoginScreen>
                           if (_bioSupported && !_bioEnabled) ...[
                             const SizedBox(height: 10),
                             Text(
-                              'Enable Biometric Login from Settings to use fingerprint / Face ID.',
+                              'Enable Face ID / Biometric Login from Settings to use Face ID or fingerprint.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.black.withOpacity(0.55),
