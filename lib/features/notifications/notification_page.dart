@@ -259,9 +259,9 @@ class _NotificationPageState extends State<NotificationPage> {
 
       // ===== OFFICIAL KITAID NAVBAR =====
       bottomNavigationBar: KitaBottomNav(
-        currentIndex: 3, // <-- change this per page
+        currentIndex: 3, 
         onTap: (index) {
-          if (index == 3) return; // already on this page
+          if (index == 3) return; 
 
           switch (index) {
             case 0: // HOME

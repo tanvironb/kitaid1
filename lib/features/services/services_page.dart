@@ -8,10 +8,8 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ✅ Home recent services sync
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 
-// ✅ QR Verification
 import 'package:kitaid1/features/verification/qr_scan_page.dart';
 
 class ServicesPage extends StatefulWidget {

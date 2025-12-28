@@ -1,4 +1,3 @@
-// lib/features/verification/verification_page.dart
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -19,7 +18,6 @@ class VerificationPage extends StatelessWidget {
   // CARDS (KEEP AS IS)
   // =========================
 
-  /// ✅ UPDATED: include "Driving License" so it matches your Firestore doc id exactly.
   List<String> _cardDocCandidates(String cardIdFromQr) {
     final t = cardIdFromQr.trim().toLowerCase();
 
@@ -36,7 +34,7 @@ class VerificationPage extends StatelessWidget {
 
     if (t.contains('driving')) {
       return [
-        'Driving License', // ✅ matches Firestore screenshot doc id
+        'Driving License', 
         'driving license',
         'Driving Licence',
         'driving licence',

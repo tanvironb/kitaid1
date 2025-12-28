@@ -1,25 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
 import 'package:kitaid1/features/authentication/screen/login/login.dart';
 import 'package:kitaid1/features/authentication/screen/profile/profile.dart';
 import 'package:kitaid1/features/authentication/screen/profile/card_detail_page.dart';
-
 import 'package:kitaid1/features/chatbot/chatbot_page.dart';
 import 'package:kitaid1/features/notifications/notification_page.dart';
 import 'package:kitaid1/features/services/services_page.dart';
-
 import 'package:kitaid1/features/settings/change_password_page.dart';
 import 'package:kitaid1/features/settings/delete_account_page.dart';
 import 'package:kitaid1/features/settings/privacy_policy_page.dart';
 import 'package:kitaid1/features/settings/settings_page.dart';
-
 import 'package:kitaid1/features/support/faq_page.dart';
 import 'package:kitaid1/splashscreen.dart';
 import 'package:kitaid1/utilities/theme/theme.dart';
-
-// ✅ ADD THIS IMPORT
 import 'package:kitaid1/features/services/biometric_auth_service.dart';
 
 class kitaid extends StatelessWidget {
