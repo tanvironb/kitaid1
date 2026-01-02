@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -41,7 +40,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
   Future<void> _deleteUserDataEverywhere(String uid) async {
     final userDoc = FirebaseFirestore.instance.collection('Users').doc(uid);
 
-    // delete subcollections first (cards, docs). Add more if you create later.
+    // delete subcollections first 
     await _deleteCollectionInBatches(colRef: userDoc.collection('cards'));
     await _deleteCollectionInBatches(colRef: userDoc.collection('docs'));
 
@@ -49,8 +48,8 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
     await userDoc.delete();
   }
 
-  /// ✅ Ask user password, then reauthenticate.
-  /// Required because Firebase often blocks delete with "requires-recent-login".
+  ///  Ask user password, then reauthenticate.
+  
   Future<bool> _reauthenticateUser(User user) async {
     final email = user.email;
     if (email == null || email.isEmpty) {
@@ -176,10 +175,10 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
 
     final uid = user.uid;
 
-    // 1) Delete Firestore data
+    // 1) Deleting Firestore data
     await _deleteUserDataEverywhere(uid);
 
-    // 2) Delete Auth user (may require re-auth)
+    // 2) Deleting Auth user 
     try {
       await user.delete();
     } on FirebaseAuthException catch (e) {
@@ -194,14 +193,14 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
           );
         }
 
-        // Retry delete after reauth
+        // Retrying delete after reauth
         await user.delete();
       } else {
         rethrow;
       }
     }
 
-    // 3) Sign out (safe cleanup)
+    // 3) Sign out 
     await FirebaseAuth.instance.signOut();
   }
 
@@ -263,7 +262,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
       if (!mounted) return;
       _snack('Your account has been deleted.');
 
-      // Go to login page and clear stack
+      // Goes to login page and clear stack
       Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;

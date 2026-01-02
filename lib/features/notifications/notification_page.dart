@@ -44,7 +44,7 @@ class _NotificationPageState extends State<NotificationPage> {
       filtered = filtered.where((n) => !n.read);
     }
 
-    // Filter: search by name/title (case-insensitive)
+    // Filter: search by name/title 
     if (_query.isNotEmpty) {
       final q = _query.toLowerCase();
       filtered = filtered.where((n) {
@@ -63,7 +63,7 @@ class _NotificationPageState extends State<NotificationPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      // ===== APP BAR (same style as Settings header) =====
+      // ===== APP BAR =====
       appBar: AppBar(
         backgroundColor: mycolors.Primary,
         foregroundColor: Colors.white,
@@ -79,7 +79,6 @@ class _NotificationPageState extends State<NotificationPage> {
             icon: const Icon(Icons.done_all_outlined),
             onPressed: () async {
               await _controller.markAllRead();
-              // ✅ no need to refresh manually; StreamBuilder will update
             },
           ),
         ],
@@ -87,8 +86,6 @@ class _NotificationPageState extends State<NotificationPage> {
 
       // Body with refresh indicator and stream builder to live-load notifications
       body: RefreshIndicator(
-        // Pull-to-refresh is optional when streaming, but we keep it for UX.
-        // It simply waits briefly so the indicator feels responsive.
         onRefresh: () async {
           await Future.delayed(const Duration(milliseconds: 450));
         },
@@ -110,33 +107,33 @@ class _NotificationPageState extends State<NotificationPage> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               children: [
-                // === SEARCH FIELD (rounded) ===
+                // === SEARCH FIELD ===
                 TextField(
                   controller: _searchCtrl,
                   style: const TextStyle(
                     color: mycolors.textPrimary,
-                    fontSize: 13, // ✅ smaller typed text
+                    fontSize: 13, 
                   ),
                   decoration: InputDecoration(
                     hintText: 'Search',
                     hintStyle: const TextStyle(
-                      fontSize: 12, // ✅ smaller hint text
-                      color: mycolors.textSecondary, // ✅ change hint color
+                      fontSize: 12, 
+                      color: mycolors.textSecondary,
                     ),
                     prefixIcon: const Icon(
                       Icons.search,
-                      size: 18, // ✅ smaller icon
+                      size: 18, 
                       color: mycolors.textSecondary,
                     ),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 8, // ✅ reduces height
+                      vertical: 8, 
                     ),
                     border: OutlineInputBorder(
                       borderRadius:
-                          BorderRadius.circular(20), // slightly smaller radius
+                          BorderRadius.circular(20), 
                       borderSide: const BorderSide(
                         color: mycolors.borderprimary,
                         width: 1.2,
@@ -211,7 +208,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         Text(
                           'No notifications found',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            fontSize: 12, // 🔽 smaller
+                            fontSize: 12, 
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -241,12 +238,10 @@ class _NotificationPageState extends State<NotificationPage> {
                       return NotificationItem(
                         data: n,
                         onToggleRead: () async {
-                          await _controller.toggle(n.id);
-                          // ✅ stream auto-updates; no manual refresh
+                          await _controller.toggle(n.id);                         
                         },
                         onDelete: () async {
                           await _controller.delete(n.id);
-                          // ✅ stream auto-updates; no manual refresh
                         },
                       );
                     },

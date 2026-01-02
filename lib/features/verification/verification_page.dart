@@ -14,9 +14,9 @@ class VerificationPage extends StatelessWidget {
     return payload != null && payload['type'] == 'kitaid_verify';
   }
 
-  // =========================
-  // CARDS (KEEP AS IS)
-  // =========================
+ 
+  // CARDS 
+ 
 
   List<String> _cardDocCandidates(String cardIdFromQr) {
     final t = cardIdFromQr.trim().toLowerCase();
@@ -48,7 +48,7 @@ class VerificationPage extends StatelessWidget {
     return [cardIdFromQr, t];
   }
 
-  /// ✅ Find the existing card document and return its data (or null)
+  ///  get the existing card document and return its data (or null)
   Future<Map<String, dynamic>?> _fetchCardData({
     required String uid,
     required String cardIdFromQr,
@@ -80,7 +80,7 @@ class VerificationPage extends StatelessWidget {
     return fallback;
   }
 
-  /// ✅ decide which fields to show per card type
+  /// which fields to show per card type
   Map<String, String> _extractCardFields({
     required String cardIdFromQr,
     required Map<String, dynamic>? cardData,
@@ -158,10 +158,8 @@ class VerificationPage extends StatelessWidget {
     };
   }
 
-  // =========================
+  
   // DOCS
-  // =========================
-
   String _getLoose(Map<String, dynamic> map, List<String> keys, String fallback) {
     String norm(String s) =>
         s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -215,7 +213,7 @@ class VerificationPage extends StatelessWidget {
     final docId = isValid ? (payload!['docId']?.toString() ?? '') : '';
     final docTitleFromQr = isValid ? (payload!['docTitle']?.toString() ?? '') : '';
 
-    // ✅ SCROLL FIX: make whole page scrollable and avoid overflow
+    //  SCROLLABLE UI
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -234,9 +232,9 @@ class VerificationPage extends StatelessWidget {
                 child: (!isValid || uid.isEmpty)
                     ? _error(theme, 'Invalid QR code (missing uid)')
                     : (kind == 'doc')
-                        // =========================
+                       
                         // DOC VERIFICATION UI
-                        // =========================
+                       
                         ? FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
                             builder: (context, userSnap) {
@@ -398,9 +396,9 @@ class VerificationPage extends StatelessWidget {
                               );
                             },
                           )
-                        // =========================
-                        // CARDS VERIFICATION UI (KEEP AS IS)
-                        // =========================
+                       
+                        // CARDS VERIFICATION UI 
+                        
                         : FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
                             builder: (context, userSnap) {

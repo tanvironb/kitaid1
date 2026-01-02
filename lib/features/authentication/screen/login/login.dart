@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
-
 import 'package:kitaid1/features/authentication/screen/register/signup_page.dart';
 import 'package:kitaid1/features/services/biometric_auth_service.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
@@ -33,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _bioEnabled = false;
   bool _bioLoading = false;
 
-  // ✅ NEW: Face ID / Face Unlock UI switch
+  // Face ID / Face Unlock UI switch
   bool _bioIsFace = false;
 
   @override
@@ -60,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen>
     _loadBiometric();
   }
 
-  /// ✅ Reload biometric status when user returns from background / settings
+  /// Reload biometric status when user returns from background / settings
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -73,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
 
-    // ✅ NEW: detect face for UI
+    // detect face for UI
     final isFace = supported ? await bio.supportsFace() : false;
 
     if (!mounted) return;
@@ -84,22 +83,19 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  /// ✅ Same normalization used in signup:
-  /// - Trim
-  /// - Uppercase
-  /// - Keep only A-Z and 0-9
+
   String _normalizeLoginId(String input) {
     return input.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
 
-  /// ✅ Convert to FirebaseAuth email (must match signup)
+  /// Convert to FirebaseAuth email
   String _idToAuthEmail(String normalizedId) => '$normalizedId@kitaid.my';
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ✅ Load recents from Firestore into RecentServicesStore (persisted)
+  // Load recents from Firestore into RecentServicesStore 
   Future<void> _loadRecentsAfterLogin(String uid) async {
     final snap = await FirebaseFirestore.instance
         .collection('Users')

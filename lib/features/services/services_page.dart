@@ -4,12 +4,9 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:kitaid1/features/authentication/screen/homepage/home_page.dart';
-
 import 'package:kitaid1/features/verification/qr_scan_page.dart';
 
 class ServicesPage extends StatefulWidget {
@@ -31,7 +28,7 @@ class _ServicesPageState extends State<ServicesPage> {
     _Service(id: 'etiqa', name: 'Etiqa', suggested: false, iconAsset: 'assets/etiqa.png'),
     _Service(id: 'mysejahtera', name: 'MySejahtera', suggested: false, iconAsset: 'assets/mysejahtera.png'),
 
-    // ✅ Verify Identity moved to bottom
+    //  Verify Identity moved to bottom
     _Service(
       id: 'verify',
       name: 'Verify Identity',

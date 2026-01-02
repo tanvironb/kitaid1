@@ -59,8 +59,7 @@ static const double gridviewspacing = 16.0;
   static double? get paddingMd => null; // medium
 
 
-// //spacing between words
-// static const double wordspace = .5; 
+
 
 
 }

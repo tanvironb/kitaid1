@@ -16,7 +16,7 @@ class NotificationService {
     return _db.collection('Users').doc(_uid).collection('notifications');
   }
 
-  /// Live stream (best for UI)
+  /// Live stream 
   Stream<List<AppNotification>> streamAll() {
     return _col()
         .orderBy('createdAt', descending: true)
@@ -24,7 +24,7 @@ class NotificationService {
         .map((snap) => snap.docs.map((d) => _fromDoc(d)).toList());
   }
 
-  /// One-time fetch (if you still want Future)
+  /// One-time fetch 
   Future<List<AppNotification>> fetchAll() async {
     final snap = await _col().orderBy('createdAt', descending: true).get();
     return snap.docs.map((d) => _fromDoc(d)).toList();

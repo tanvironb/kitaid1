@@ -24,9 +24,9 @@ class ContactPage extends StatelessWidget {
     const phoneNumber = '+60183662437';
     const emailAddress = 'monirsa2002@gmail.com';
 
-    // ❗ NO SCAFFOLD – this is just the bottom sheet content.
+    //  Bottom sheet content.
     return SafeArea(
-      top: false, // keep top area for the Settings page
+      top: false, 
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),

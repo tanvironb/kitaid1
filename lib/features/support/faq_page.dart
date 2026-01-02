@@ -11,8 +11,8 @@ class FaqPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: mycolors.Primary, // 🔵 same blue as other pages
-        foregroundColor: Colors.white, // white text & icons
+        backgroundColor: mycolors.Primary, 
+        foregroundColor: Colors.white, 
         elevation: 0,
         title: const Text(
           'FAQ',
@@ -60,7 +60,7 @@ class FaqPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── GETTING STARTED ────────────────────────────────────────────
+                // ─── GETTING STARTED ─────
                 _H2(textTheme, 'Getting Started'),
                 const SizedBox(height: 8),
                 _CardBlock(
@@ -103,7 +103,7 @@ class FaqPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── ACCOUNTS & LOGIN ─────────────────────────────────────────
+                // ─── ACCOUNTS & LOGIN ─────
                 _H2(textTheme, 'Accounts & Login'),
                 const SizedBox(height: 8),
                 _CardBlock(
@@ -141,7 +141,7 @@ class FaqPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── SECURITY & PRIVACY ───────────────────────────────────────
+                // ─── SECURITY & PRIVACY ─────────
                 _H2(textTheme, 'Security & Privacy'),
                 const SizedBox(height: 8),
                 _CardBlock(
@@ -182,7 +182,7 @@ class FaqPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── USING YOUR DIGITAL IDS ───────────────────────────────────
+                // ─── USING YOUR DIGITAL IDS ──────
                 _H2(textTheme, 'Using Your Digital IDs'),
                 const SizedBox(height: 8),
                 _CardBlock(
@@ -221,7 +221,7 @@ class FaqPage extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── TROUBLESHOOTING & SUPPORT ────────────────────────────────
+                // ─── TROUBLESHOOTING & SUPPORT ─────────
                 _H2(textTheme, 'Troubleshooting & Support'),
                 const SizedBox(height: 8),
                 _CardBlock(

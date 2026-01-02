@@ -1,12 +1,9 @@
-// lib/features/authentication/screen/homepage/home_page.dart
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:kitaid1/common/widgets/nav/kita_bottom_nav.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -43,7 +40,7 @@ class UserCard {
   final String id;
   final String title;
 
-  /// ✅ Card image from Firestore (download URL)
+  /// Card image from Firestore 
   final String? imageUrl;
 
   /// Optional fallbacks
@@ -191,7 +188,7 @@ class _HomePageState extends State<HomePage> {
     final s = v.trim();
     if (s.isEmpty) return false;
 
-    // ✅ Accept general http(s)
+    // Accept general http
     if (s.startsWith('http://') || s.startsWith('https://')) return true;
 
     return false;
@@ -205,11 +202,7 @@ class _HomePageState extends State<HomePage> {
         s.contains('storage.googleapis.com');
   }
 
-  /// ✅ SUPER ROBUST:
-  /// - Case-insensitive key match (License / license / LICENSE / "license ")
-  /// - Special case: IC uses "MyKad"
-  /// - Special case: Driving uses "license"
-  /// - Fallback: scan ALL fields for a Firebase Storage URL
+
   String? _pickCardImageUrl(String docId, Map<String, dynamic> data) {
     String? s(dynamic v) => v?.toString();
 
@@ -221,19 +214,19 @@ class _HomePageState extends State<HomePage> {
       lower[e.key.toString().trim().toLowerCase()] = e.value;
     }
 
-    // 1) IC special (your working field is "MyKad")
+    // 1) IC special 
     if (id == 'ic' || id.contains('mykad')) {
       final v = s(lower['mykad']) ?? s(data['MyKad']);
       if (_looksLikeUrl(v)) return v!.trim();
     }
 
-    // 2) Driving license special (field "license" but may be different case)
+    // 2) Driving license special 
     if (id.contains('driving')) {
       final v = s(lower['license']) ?? s(data['license']) ?? s(data['License']);
       if (_looksLikeUrl(v)) return v!.trim();
     }
 
-    // 3) Common keys (case-insensitive)
+    // 3) Common keys 
     const commonKeys = [
       'license',
       'mykad',
@@ -293,7 +286,7 @@ class _HomePageState extends State<HomePage> {
         );
       });
 
-      // ✅ Users/{uid}/cards
+      
       _cardsSub = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -319,7 +312,7 @@ class _HomePageState extends State<HomePage> {
         ProfileRepository.instance.setCards(list);
       });
 
-      // Users/{uid}/recentServices
+    
       _recentSub = FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -692,7 +685,7 @@ class _CardPill extends StatelessWidget {
       );
     }
 
-    // Fallback pill (icon)
+    // Fallback pill 
     return Material(
       color: scheme.primaryContainer,
       borderRadius: BorderRadius.circular(mysizes.cardRadiusLg),

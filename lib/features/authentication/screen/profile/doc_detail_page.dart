@@ -1,4 +1,3 @@
-// lib/features/authentication/screen/profile/doc_detail_page.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
 
@@ -8,13 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-
-// ✅ PDF share imports (same behavior as card page)
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
-// ✅ NEW imports (pages you added)
 import 'package:kitaid1/features/authentication/screen/profile/travel_history_page.dart';
 import 'package:kitaid1/features/authentication/screen/profile/passport_history_page.dart';
 
@@ -76,7 +71,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
   }
 
   // -----------------------
-  // Share as PDF (same as card page behavior) + ✅ QR inside PDF
+  // Share as PDF with QR
   // -----------------------
   Future<void> _shareAsPdf({
     required String title,
@@ -85,7 +80,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
   }) async {
     final pdf = pw.Document();
 
-    // Generate QR PNG bytes from qr_flutter
+    // Generate QR PNG from qr_flutter
     final painter = QrPainter(
       data: qrData,
       version: QrVersions.auto,
@@ -96,7 +91,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
     final byteData = await qrImg.toByteData(format: ui.ImageByteFormat.png);
 
     if (byteData == null) {
-      // Fallback: still export details even if QR generation fails
       pdf.addPage(
         pw.Page(
           pageFormat: PdfPageFormat.a4,
@@ -148,7 +142,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
         ),
         pw.SizedBox(height: 16),
 
-        // QR (NEW)
+        // QR 
         pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -259,7 +253,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
     final userSnap = await _db.collection('Users').doc(uid).get();
     final user = userSnap.data() ?? {};
 
-    // ✅ doc data
+    // doc data
     final docRef = _db
         .collection('Users')
         .doc(uid)
@@ -356,7 +350,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
         final user = data.userData;
         final doc = data.docData;
 
-        // ✅ if doc missing / denied, show clear message instead of "-"
         if (!data.docExists) {
           return _errorScaffold(
             theme,
@@ -364,7 +357,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
           );
         }
 
-        // Prefer doc fields first, then fallback to user profile, then widget params.
+
         final ownerName = _getLoose(doc, const ['name', 'Name']).isNotEmpty
             ? _getLoose(doc, const ['name', 'Name'])
             : (_getLoose(user, const ['Name', 'name', 'fullName', 'FullName'])
@@ -406,7 +399,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
           userData: user,
         );
 
-        // ✅ QR payload MUST be JSON because VerificationPage uses jsonDecode()
         final qrPayload = <String, dynamic>{
           "type": "kitaid_verify",
           "kind": "doc",
@@ -468,7 +460,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                       ),
                     ),
 
-                    // ✅ Only show these buttons for Passport
+                    //  Only for Passport
                     if (_isPassportDoc()) ...[
                       const SizedBox(width: 12),
 
@@ -575,7 +567,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                       color: mycolors.textPrimary,
                     ),
 
-                    // ✅ Share (PDF like card page) + QR inside PDF
+                    // Share QR inside PDF
                     IconButton(
                       tooltip: 'Share',
                       onPressed: () {

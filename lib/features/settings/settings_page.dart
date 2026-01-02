@@ -20,12 +20,12 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   AppLanguage _lang = AppLanguage.en;
 
-  // ✅ Biometric state
+  //  Biometric state
   bool _bioSupported = false;
   bool _bioEnabled = false;
   bool _bioLoading = false;
 
-  // ✅ NEW: detect Face availability for UI label/icon
+  //  Face availability for UI label/icon
   bool _bioIsFace = false;
 
   @override
@@ -40,7 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final supported = await bio.isDeviceSupported();
     final enabled = await bio.isEnabled();
 
-    // Face detection only matters when supported
+    // Face detection -> when supported
     final isFace = supported ? await bio.supportsFace() : false;
 
     if (!mounted) return;
@@ -136,7 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'sign_out':
         return bm ? 'Log keluar' : 'Sign Out';
 
-      // ✅ NEW strings
+      //  NEW strings
       case 'face_login':
         return bm ? 'Log Masuk Face ID' : 'Face ID Login';
       case 'bio_login':
@@ -159,7 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _signOut() async {
     try {
-      // Optional: Disable biometric flag on sign out (your choice)
+      // Disable biometric flag on sign out 
       await BiometricAuthService.instance.setEnabled(false);
 
       await FirebaseAuth.instance.signOut();

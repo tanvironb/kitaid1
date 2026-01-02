@@ -1,5 +1,3 @@
-// TODO Implement this library.
-// lib/features/auth/signup/widgets/otp_fields.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
@@ -78,8 +76,8 @@ class _OtpFieldsState extends State<OtpFields> {
             fontWeight: FontWeight.bold,
           ),
           decoration: InputDecoration(
-            filled: true,                     // ✅ white background
-            fillColor: Colors.white,          // ✅ fill each OTP box
+            filled: true,                     
+            fillColor: Colors.white,       
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(mysizes.inputfieldRadius),

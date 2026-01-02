@@ -1,4 +1,3 @@
-// lib/features/authentication/screen/profile/passport_history_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
@@ -8,14 +7,13 @@ class PassportHistoryPage extends StatelessWidget {
   const PassportHistoryPage({
     super.key,
     required this.uid,
-    required this.docId, // should be "Passport"
+    required this.docId, 
   });
 
   final String uid;
   final String docId;
 
-  // ✅ NEW: collection path
-  // Users/{uid}/docs/{docId}/passporthistory/{passportX}
+
   CollectionReference<Map<String, dynamic>> _col() {
     return FirebaseFirestore.instance
         .collection('Users')
@@ -68,7 +66,7 @@ class PassportHistoryPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(mysizes.defaultspace),
         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          // ✅ NEW: listen to ALL passport docs (passport1, passport2...)
+         
           stream: _col().snapshots(),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
@@ -101,7 +99,7 @@ class PassportHistoryPage extends StatelessWidget {
               );
             }
 
-            // ✅ Sort by document id: passport1, passport2 ...
+   
             docs.sort((a, b) => a.id.compareTo(b.id));
 
             return ListView.separated(
@@ -110,8 +108,6 @@ class PassportHistoryPage extends StatelessWidget {
               itemBuilder: (context, i) {
                 final data = docs[i].data();
 
-                // ✅ Your fields from screenshot:
-                // passportno, dateofexpiery, status
                 final passportNo = _getLoose(data, const [
                   'passportno',
                   'passport no',
@@ -120,7 +116,7 @@ class PassportHistoryPage extends StatelessWidget {
                 ]);
 
                 final expiry = _getLoose(data, const [
-                  'dateofexpiery', // (typo in your firestore) ✅
+                  'dateofexpiery', 
                   'dateofexpiry',
                   'date of expiry',
                   'expiry',
@@ -141,7 +137,6 @@ class PassportHistoryPage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ Card title = Old Passport No
                       Text(
                         'Old Passport No',
                         style: theme.textTheme.bodyMedium?.copyWith(

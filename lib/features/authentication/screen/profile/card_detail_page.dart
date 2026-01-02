@@ -1,17 +1,12 @@
-// lib/features/authentication/screen/profile/card_detail_page.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-
-// ✅ PDF + Save/Print as PDF dialog
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -36,10 +31,10 @@ class CardDetailPage extends StatefulWidget {
   final String ownerDob;
   final String ownerCountry;
 
-  /// Local asset fallback (optional)
+  /// Local asset fallback 
   final String? imageAsset;
 
-  /// Firebase Storage download URL (optional)
+  /// Firebase Storage download URL 
   final String? imageUrl;
 
   @override
@@ -134,7 +129,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
     return widget.cardTitle.trim();
   }
 
-  /// QR payload (VerificationPage jsonDecode expects JSON)
+  /// QR payload 
   String _buildVerificationQrData() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return '';

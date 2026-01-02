@@ -1,4 +1,3 @@
-// lib/features/authentication/screen/profile/profile_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -21,10 +20,10 @@ class ProfileCardItem {
   final String title;
   final String idLabel;
 
-  /// Network image url from Firestore (Firebase Storage downloadURL)
+  /// Network image url from Firestore 
   final String? imageUrl;
 
-  /// Local asset fallback (optional)
+  /// Local asset fallback 
   final String? imageAsset;
 
   const ProfileCardItem({
@@ -44,7 +43,7 @@ class ProfileDocItem {
   /// Passport cover / doc preview URL
   final String? previewUrl;
 
-  /// ✅ Passport number from Firestore (e.g. field: "passport no")
+  /// Passport number from Firestore 
   final String? passportNo;
 
   const ProfileDocItem({
@@ -154,7 +153,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   final displayName = name.isNotEmpty ? name : 'User';
                   final displayId = ic.isNotEmpty ? ic : uid;
 
-                  // ✅ Read DOB + Nationality from cards collection (IC/MyKad doc)
+                  //  Read DOB + Nationality from cards collection 
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('Users')
@@ -440,9 +439,9 @@ class _SegmentTab extends StatelessWidget {
   }
 }
 
-/// ---------------------------
+
 /// CARDS FROM FIRESTORE
-/// ---------------------------
+
 class _CardsFromFirestore extends StatelessWidget {
   const _CardsFromFirestore({
     required this.uid,
@@ -672,11 +671,9 @@ class _CardTile extends StatelessWidget {
   }
 }
 
-/// ---------------------------
+
 /// DOCS FROM FIRESTORE
-/// ✅ Big cards like Cards (Passport cover as preview)
-/// ✅ Passport No read from Firebase field: "passport no"
-/// ---------------------------
+
 class _DocsFromFirestore extends StatelessWidget {
   const _DocsFromFirestore({
     required this.uid,
@@ -708,7 +705,7 @@ class _DocsFromFirestore extends StatelessWidget {
   }
 
   String? _pickPreviewUrl(String docId, Map<String, dynamic> data) {
-    // Users/{uid}/docs/Passport  field: "Passport" = downloadURL
+    // Users/{uid}/docs/Passport  
     final preferredKeys = <String>[
       docId, // "Passport"
       docId.toLowerCase(), // "passport"
@@ -735,7 +732,7 @@ class _DocsFromFirestore extends StatelessWidget {
     final v = _pick(
       data,
       const [
-        'passport no', // ✅ your Firestore field
+        'passport no', 
         'Passport No',
         'passport_no',
         'passportNo',
@@ -783,7 +780,7 @@ class _DocsFromFirestore extends StatelessWidget {
 
           final title = (data['title'] ?? d.id).toString().trim();
 
-          // ✅ Only read passport number for passport doc
+       
           final passportNo =
               title.toLowerCase().contains('passport') ? _pickPassportNo(data) : null;
 
@@ -874,7 +871,7 @@ class _DocTileBig extends StatelessWidget {
                     ),
                   ),
 
-                  // ✅ Show Passport No ONLY for Passport (from Firebase)
+                  // Show Passport No ONLY for Passport (from Firebase)
                   if (doc.title.toLowerCase().contains('passport')) ...[
                     const SizedBox(height: 6),
                     Text(

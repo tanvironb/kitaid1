@@ -16,7 +16,7 @@ class AppNotification {
     this.category,
   });
 
-  // Allows to create a new notification with one property changed (used when toggling read/unread)
+  // Allows to create a new notification 
   AppNotification copyWith({bool? read}) => AppNotification(
     id: id,
     title: title,
@@ -26,7 +26,7 @@ class AppNotification {
     category: category,
   );
 
-  // These two help to convert between JSON and Dart objects, useful for saving to or loading from Firebase later
+  // These help to convert between JSON and Dart objects
   factory AppNotification.fromJson(Map<String, dynamic> json) => AppNotification(
     id: json['id'] as String,
     title: json['title'] as String,

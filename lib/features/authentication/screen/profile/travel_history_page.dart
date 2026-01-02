@@ -8,14 +8,13 @@ class TravelHistoryPage extends StatelessWidget {
   const TravelHistoryPage({
     super.key,
     required this.uid,
-    required this.docId, // ✅ this should be "Passport"
+    required this.docId, //"Passport"
   });
 
   final String uid;
   final String docId;
 
-  // ✅ Now matches your latest Firestore path:
-  // Users/{uid}/docs/{docId}/travelHistory/travelHistory
+
   DocumentReference<Map<String, dynamic>> _travelDoc() {
     return FirebaseFirestore.instance
         .collection('Users')
@@ -29,13 +28,13 @@ class TravelHistoryPage extends StatelessWidget {
   // --- helpers ---
   String _s(dynamic v) => (v ?? '').toString().trim();
 
-  /// Extract country/city part from "Qatar - 22/12/2022" => "Qatar"
+
   String _placeFromLine(String line) {
     final parts = line.split('-');
     return parts.isEmpty ? line.trim() : parts.first.trim();
   }
 
-  /// Extract date part from "Qatar - 22/12/2022" => "22/12/2022"
+
   String _dateFromLine(String line) {
     final parts = line.split('-');
     if (parts.length < 2) return '';
@@ -45,7 +44,7 @@ class TravelHistoryPage extends StatelessWidget {
   String _flagForPlace(String place) {
     final key = place.trim().toLowerCase();
 
-    // ✅ quick mapping (add more anytime)
+    // mapping 
     const map = <String, String>{
       'malaysia': 'MY',
       'qatar': 'QA',

@@ -1,4 +1,3 @@
-// lib/features/auth/signup/signup_otp_page.dart
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,7 +16,7 @@ class SignUpOtpPage extends StatefulWidget {
     required this.signupPayload,
   });
 
-  final String phoneNumber; // Must be in E.164 e.g. +60123456789
+  final String phoneNumber;
   final Map<String, dynamic> signupPayload;
 
   @override
@@ -177,8 +176,7 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
     await _sendOtp(forceResend: true);
   }
 
-  /// ✅ This fixes "IC/Passport already registered" after going back.
-  /// It cancels the signup by deleting the just-created Auth user + Firestore user doc.
+
   Future<void> _cancelAndGoBack() async {
     if (_cancelling) return;
 
@@ -188,10 +186,10 @@ class _SignUpOtpPageState extends State<SignUpOtpPage> {
       final user = _auth.currentUser;
 
       if (user != null) {
-        // delete Firestore doc (optional but recommended)
+        // delete Firestore doc 
         await FirebaseFirestore.instance.collection('Users').doc(user.uid).delete();
 
-        // delete Auth user (removes the IC/Passport "email" registration)
+        // delete Auth user 
         await user.delete();
       }
 

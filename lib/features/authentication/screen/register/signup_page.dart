@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
@@ -49,7 +48,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return ok ? null : 'Invalid email';
   }
 
-  /// Malaysia phone validation (without +60)
+  /// Malaysia phone validation 
   String? _phoneV(String? v) {
     if (_req(v) != null) return 'Required';
     final p = v!.replaceAll(RegExp(r'\D'), '');
@@ -80,7 +79,7 @@ class _SignUpPageState extends State<SignUpPage> {
   return '+60$digits';
 }
 
-  /// ✅ Normalize ID same as login:
+  ///  Normalize ID 
   /// Uppercase + keep only A-Z and 0-9.
   String _normalizeLoginId(String input) {
     return input
@@ -89,7 +88,7 @@ class _SignUpPageState extends State<SignUpPage> {
         .replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
 
-  /// ✅ Convert ID to FirebaseAuth "email"
+  ///  Convert ID to FirebaseAuth "email"
   String _idToAuthEmail(String normalizedId) => '$normalizedId@kitaid.my';
 
   Future<void> _onNext() async {
@@ -114,7 +113,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final authEmail = _idToAuthEmail(normalizedId);
 
-      // 1) Create account in Firebase Auth using ID-based email
+      // 1) Creates account in Firebase Auth using ID-based email
       final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: authEmail,
         password: _password.text,
@@ -122,19 +121,17 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final uid = cred.user!.uid;
 
-      // 2) Save profile in Firestore
+      // 2) Saves profile in Firestore
       await FirebaseFirestore.instance.collection('Users').doc(uid).set({
         'Name': _name.text.trim(),
         'Email': _email.text.trim(), // real email
         'Phone No': phoneFull,
 
-        // ✅ login mapping fields
+        // login mapping fields
         'AuthEmail': authEmail,
         'LoginId': rawId,
         'LoginIdNormalized': normalizedId,
 
-        // optional legacy fields (so older code still works)
-        // You can keep these OR remove later once everything is stable:
         'IC No': rawId,
         'Passport No': rawId,
 
@@ -144,7 +141,7 @@ class _SignUpPageState extends State<SignUpPage> {
       if (!mounted) return;
       setState(() => _loading = false);
 
-      // 3) Go to OTP page
+      // 3) OTP page
       Navigator.push(
         context,
         MaterialPageRoute(

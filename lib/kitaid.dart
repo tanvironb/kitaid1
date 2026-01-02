@@ -25,7 +25,7 @@ class kitaid extends StatelessWidget {
       title: 'KitaID',
       theme: mytheme.LightTheme,
 
-      // ✅ AuthGate decides what to show after splash + biometric gate
+      //AuthGate decides what to show after splash + biometric gate
       home: const AuthGate(),
 
       routes: {
@@ -68,11 +68,7 @@ class kitaid extends StatelessWidget {
   }
 }
 
-/// ✅ Splash ALWAYS shows first (4 seconds)
-/// ✅ After splash:
-/// - If NOT logged in -> Login
-/// - If logged in & biometric enabled -> ask biometric then Home
-/// - If biometric fails -> sign out -> Login
+
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -83,10 +79,10 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   bool _showSplash = true;
 
-  // ✅ prevent multiple biometric prompts
+  // prevent multiple biometric prompts
   bool _bioCheckedThisSession = false;
 
-  // ✅ UI state for biometric gating
+  // UI state for biometric gating
   bool _bioGateLoading = false;
   bool _bioGatePassed = false;
 
@@ -125,7 +121,7 @@ class _AuthGateState extends State<AuthGate> {
             _bioGateLoading = false;
           });
         } else {
-          // ❌ fail -> sign out -> go login
+          // fail -> sign out -> go login
           await FirebaseAuth.instance.signOut();
           if (!mounted) return;
           setState(() {
@@ -142,7 +138,7 @@ class _AuthGateState extends State<AuthGate> {
         });
       }
     } catch (_) {
-      // if anything weird happens, fallback to login (safe)
+      // if anything weird happens, fallback to login 
       await FirebaseAuth.instance.signOut();
       if (!mounted) return;
       setState(() {
@@ -157,12 +153,12 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // ✅ ALWAYS show splash first
+        //  Always show splash first
         if (_showSplash) {
           return const Splashscreen();
         }
 
-        // ✅ Not logged in -> Login
+        //  Not logged in -> Login
         if (!snapshot.hasData) {
           // reset biometric state for next login
           _bioCheckedThisSession = false;
@@ -171,25 +167,25 @@ class _AuthGateState extends State<AuthGate> {
           return const LoginScreen();
         }
 
-        // ✅ Logged in -> run biometric gate once
+        //  Logged in -> run biometric gate once
         if (!_bioCheckedThisSession && !_bioGateLoading) {
           // start biometric gate (without blocking build)
           Future.microtask(_runBiometricGate);
         }
 
-        // show loading while gating (nice UX)
+        // show loading while gating in progress
         if (_bioGateLoading) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // ✅ If biometric gate passed -> Home
+        //  If biometric gate passed -> Home
         if (_bioGatePassed) {
           return const HomePage();
         }
 
-        // ❌ Gate failed -> Login
+        // Gate failed -> Login
         return const LoginScreen();
       },
     );

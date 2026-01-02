@@ -36,7 +36,7 @@ class _ChatBotPageState extends State<ChatBotPage> {
   final TextEditingController _textCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
 
-  /// Initial bot message (like the prototype)
+  /// Initial bot message 
   final List<ChatMessage> _messages = [
     const ChatMessage(
       text: 'Hi, How can i assist you?',
@@ -44,12 +44,9 @@ class _ChatBotPageState extends State<ChatBotPage> {
     ),
   ];
 
-  /// --------------------------
   /// BOT KNOWLEDGE (FAQ + PRIVACY POLICY + CARDS + DOCS)
-  /// Based on your provided FAQ page and Privacy Policy content.
-  /// --------------------------
   late final List<_BotRule> _rules = [
-    // ------------------ Greetings / Help ------------------
+    // ------------------ Greetings -----------------
     _BotRule(
       patterns: [
         RegExp(r'\bhi\b', caseSensitive: false),

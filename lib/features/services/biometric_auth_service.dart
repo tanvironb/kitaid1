@@ -9,9 +9,8 @@ class BiometricAuthService {
 
   final LocalAuthentication _auth = LocalAuthentication();
 
-  /// ✅ More reliable support check:
-  /// - Some devices return canCheckBiometrics=false even if device supports biometrics
-  /// - We also check getAvailableBiometrics()
+  ///  More reliable support check:
+  /// - if devices return canCheckBiometrics=false even if device supports biometrics
   Future<bool> isDeviceSupported() async {
     try {
       final supported = await _auth.isDeviceSupported();
@@ -23,7 +22,7 @@ class BiometricAuthService {
     }
   }
 
-  /// ✅ True if at least one biometric is enrolled/available
+  ///  True if at least one biometric is enrolled
   Future<bool> hasEnrolledBiometrics() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -33,7 +32,7 @@ class BiometricAuthService {
     }
   }
 
-  /// ✅ UI helper: Face supported/enrolled?
+  ///  UI helper: Face supported
   Future<bool> supportsFace() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -43,7 +42,7 @@ class BiometricAuthService {
     }
   }
 
-  /// ✅ UI helper: Fingerprint supported/enrolled?
+  ///  UI helper: Fingerprint supported/enrolled?
   Future<bool> supportsFingerprint() async {
     try {
       final available = await _auth.getAvailableBiometrics();
@@ -63,7 +62,7 @@ class BiometricAuthService {
     await prefs.setBool(_prefKeyEnabled, value);
   }
 
-  /// ✅ This will trigger Face ID on iOS / Face Unlock on Android automatically if available.
+  ///  This will trigger Face ID on iOS / Face Unlock on Android automatically if available.
   Future<bool> authenticate({String reason = 'Verify your identity'}) async {
     try {
       final ok = await _auth.authenticate(

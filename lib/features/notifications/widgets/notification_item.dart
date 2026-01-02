@@ -14,7 +14,7 @@ class NotificationItem extends StatelessWidget {
   final VoidCallback onToggleRead;
   final VoidCallback onDelete;
 
-  // ✅ Icon depends on category (only change for icons)
+  //  Icon depends on category 
   IconData _iconForCategory(String? category) {
     final c = (category ?? '').toLowerCase();
     if (c.contains('immigration')) return Icons.badge_outlined;
@@ -28,7 +28,7 @@ class NotificationItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // ✅ KEEP your original color rule EXACTLY
+   
     final Color bg = data.read
         ? const Color.fromARGB(255, 240, 240, 240)  // lighter gray for read
         : const Color.fromARGB(255, 197, 197, 197); // darker gray for unread
@@ -47,14 +47,13 @@ class NotificationItem extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          onTap: data.read ? null : onToggleRead, // ✅ keep same behavior
+          onTap: data.read ? null : onToggleRead, 
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✅ leading icon (same circle style, icon depends on category)
                 Container(
                   width: 36,
                   height: 36,
@@ -70,7 +69,6 @@ class NotificationItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title (unchanged: still 1 line)
                       Text(
                         data.title,
                         style: titleStyle,
@@ -80,12 +78,11 @@ class NotificationItem extends StatelessWidget {
 
                       const SizedBox(height: 4),
 
-                      // ✅ Body: FULL message (same page)
+                      //  Body
                       if (data.body != null && data.body!.isNotEmpty)
                         Text(
                           data.body!,
                           softWrap: true,
-                          // ❌ removed maxLines/ellipsis to show full text
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: mysizes.fontSm,
                             fontWeight: FontWeight.w400,

@@ -8,8 +8,7 @@ import 'package:kitaid1/utilities/theme/widget_theme/text_theme.dart';
 
 class mytheme{
 
-  //private constructor
-  // cannot create object
+
   mytheme._();
 
 //light theme
@@ -22,8 +21,6 @@ class mytheme{
     textTheme: myTextTheme.lightTextTheme,
     chipTheme: mychiptheme.LightChipTheme ,
     scaffoldBackgroundColor: mycolors.bgPrimary ,
-    //appBarTheme: ,
-    //bottomSheetTheme: ,
     elevatedButtonTheme: myelevatedButton.lightElevatedButtonTheme,
     outlinedButtonTheme: myoutlinedButtonTheme.lightOutlinedButtonTheme,
     inputDecorationTheme: myinputdecorationbutton.lightInputdecorationTheme,

@@ -29,8 +29,8 @@ class KitaBottomNav extends StatelessWidget {
                 blurRadius: 18,
                 spreadRadius: 0,
                 offset: Offset(0, 10),
-                color: Color(0x1F000000), // soft shadow like mock
-              ),
+                color: Color(0x1F000000), 
+                )// soft shadow
             ],
           ),
           child: Padding(
@@ -69,8 +69,8 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Solid black-ish for all icons to match the screenshot
-    final Color iconColor = Colors.black; // or mycolors.textPrimary if you prefer
+    // Solid black-ish for all icons 
+    final Color iconColor = Colors.black; 
 
     return InkWell(
       borderRadius: BorderRadius.circular(mysizes.borderRadiusMd),
@@ -82,11 +82,10 @@ class _Item extends StatelessWidget {
           children: [
             Icon(icon, size: 26, color: iconColor),
             const SizedBox(height: 6),
-            // Blue underline only when active
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOut,
-              width: _isActive ? 28 : 0,  // short bar like your mock
+              width: _isActive ? 28 : 0,  // short bar 
               height: 4,
               decoration: BoxDecoration(
                 color: _isActive ? mycolors.Primary : Colors.transparent,

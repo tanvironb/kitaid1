@@ -8,7 +8,7 @@ Future<void> setupPushNotifications() async {
 
   final messaging = FirebaseMessaging.instance;
 
-  // iOS permission (Android 13+ will also ask)
+  // iOS permission
   await messaging.requestPermission(alert: true, badge: true, sound: true);
 
   // Get token

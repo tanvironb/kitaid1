@@ -30,7 +30,7 @@ class _QrScanPageState extends State<QrScanPage> {
 
           if (raw == null) return;
 
-          // ✅ Only handle KitaID verification QR
+          //   KitaID verification QR
           if (!raw.contains('"type":"kitaid_verify"')) return;
 
           _handled = true;
