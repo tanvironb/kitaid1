@@ -155,28 +155,25 @@ class _HomePageState extends State<HomePage> {
       name: 'HKL',
       icon: Icons.local_hospital_outlined,
       phone: '03-2615 5555',
-      url: 'https://hkl.moh.gov.my/',
+      url: 'https://hklmedicals.com/',
     ),
     EmergencyLink(
       id: 'ambulance',
       name: 'Ambulance',
       icon: Icons.medical_services_outlined,
       phone: '999',
-      url: 'https://www.malaysia.gov.my/portal/content/30131',
     ),
     EmergencyLink(
       id: 'police',
       name: 'Police',
       icon: Icons.local_police_outlined,
       phone: '999',
-      url: 'https://www.rmp.gov.my/',
     ),
     EmergencyLink(
-      id: 'fire-Service',
-      name: 'Fire-Service',
+      id: 'fire-fighter',
+      name: 'Fire Fighter',
       icon: Icons.local_fire_department_outlined,
       phone: '999',
-      url: 'https://www.bomba.gov.my/',
     ),
   ];
 
@@ -677,6 +674,8 @@ class _CardPill extends StatelessWidget {
                           style: text.titleSmall?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
+                            fontSize: mysizes.fontSm, 
+                            height: 1.1,  
                           ),
                         ),
                       ),

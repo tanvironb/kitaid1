@@ -53,6 +53,9 @@ class _CardDetailPageState extends State<CardDetailPage> {
   /// Card document fields
   Map<String, dynamic>? _cardData;
 
+  /// ✅ The EXACT Firestore document id that was found (e.g. "MyKad" or "I-Kad")
+  String? _resolvedCardType;
+
   /// Favorites state
   bool _isFavorite = false;
   bool _loadingFavorite = true;
@@ -91,6 +94,8 @@ class _CardDetailPageState extends State<CardDetailPage> {
       'ic',
       'mykad',
       'MyKad',
+      'I-Kad',
+      'i-kad',
       'license',
       'licence',
       'drivingLicense',
@@ -123,14 +128,21 @@ class _CardDetailPageState extends State<CardDetailPage> {
   String _favoriteKey() {
     final t = widget.cardTitle.trim().toLowerCase();
     if (t.contains('driving')) return 'driving_license';
-    if (t == 'mykad' || t == 'ic') return 'ic';
+    if (t.contains('mykad') || t.contains('i-kad') || t == 'ic') return 'ic';
     return t.replaceAll(RegExp(r'\s+'), '_');
   }
 
   String _cardDocIdForVerify() {
+    // ✅ Use actual Firestore doc id if we found one (MyKad / I-Kad)
+    if (_resolvedCardType != null && _resolvedCardType!.trim().isNotEmpty) {
+      return _resolvedCardType!.trim();
+    }
+
     final t = widget.cardTitle.trim().toLowerCase();
     if (t.contains('driving')) return 'Driving License';
-    if (t == 'mykad' || t == 'ic') return 'IC';
+    if (t.contains('mykad')) return 'MyKad';
+    if (t.contains('i-kad')) return 'I-Kad';
+    if (t == 'ic') return 'IC';
     return widget.cardTitle.trim();
   }
 
@@ -175,12 +187,17 @@ class _CardDetailPageState extends State<CardDetailPage> {
               'license',
               'licence',
             ]
-          : (t.contains('mykad') || t == 'ic')
+          : (t.contains('mykad') || t.contains('i-kad') || t == 'ic')
               ? [
-                  'ic',
-                  'IC',
-                  'mykad',
+                  // ✅ MyKad / I-Kad variants
                   'MyKad',
+                  'mykad',
+                  'I-Kad',
+                  'i-kad',
+                  'IKad',
+                  'iKad',
+                  'IC',
+                  'ic',
                   'mykad card',
                   'ic card',
                 ]
@@ -203,11 +220,13 @@ class _CardDetailPageState extends State<CardDetailPage> {
       }
 
       final data = found?.data();
+      final resolvedType = found?.id; // ✅ exact doc id we matched
       final url = fetchImage ? _extractAnyUrl(data) : null;
 
       if (!mounted) return;
       setState(() {
         _cardData = data;
+        _resolvedCardType = resolvedType;
         if (fetchImage) _fetchedImageUrl = url;
         _loadingImage = false;
       });
@@ -344,7 +363,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
                   ),
                 ),
                 pw.SizedBox(height: 12),
-
                 pw.Row(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
@@ -381,7 +399,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
                     ),
                   ],
                 ),
-
                 pw.SizedBox(height: 18),
                 pw.Text(
                   'Details',
@@ -391,7 +408,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
                   ),
                 ),
                 pw.SizedBox(height: 10),
-
                 pw.Table(
                   border: pw.TableBorder.all(width: 0.7),
                   columnWidths: {
@@ -541,7 +557,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
                             : _previewFallback(theme),
               ),
             ),
-
             const SizedBox(height: 14),
 
             // ================= QR (POLICE SCAN) =================
@@ -581,8 +596,9 @@ class _CardDetailPageState extends State<CardDetailPage> {
                     IconButton(
                       visualDensity: VisualDensity.compact,
                       onPressed: () async {
-                        final all =
-                            details.map((e) => '${e.label}: ${e.value}').join('\n');
+                        final all = details
+                            .map((e) => '${e.label}: ${e.value}')
+                            .join('\n');
                         await _copyText(all, toastMsg: 'Copied all details');
                       },
                       icon: const Icon(Icons.copy, size: 20),
@@ -679,20 +695,36 @@ class _CardDetailPageState extends State<CardDetailPage> {
       return fallback;
     }
 
-    if (t == 'mykad' || t == 'ic') {
+    if (t.contains('mykad') || t.contains('i-kad') || t == 'ic') {
+      final cardTypeShown = (_resolvedCardType != null &&
+              _resolvedCardType!.trim().isNotEmpty)
+          ? _resolvedCardType!.trim()
+          : widget.cardTitle.trim();
+
       return [
+        _DetailItem('Card Type', cardTypeShown), // ✅ MyKad or I-Kad
         _DetailItem('Name', pickAny(['name', 'Name'], widget.ownerName)),
         _DetailItem(
           'Date of Birth',
-          pickAny(['dob', 'DOB', 'Date of Birth', 'date of birth'], widget.ownerDob),
+          pickAny(
+            ['dob', 'DOB', 'Date of Birth', 'date of birth'],
+            widget.ownerDob,
+          ),
         ),
         _DetailItem(
           'Nationality',
-          pickAny(['nationality', 'Nationality', 'country', 'Country'], widget.ownerCountry),
+          pickAny(['nationality', 'Nationality'], widget.ownerCountry),
         ),
         _DetailItem(
           'MyKad No',
-          pickAny(['mykadNo', 'mykad_no', 'icNo', 'ic_no'], _onlyId(widget.cardIdLabel)),
+          pickAny(
+            ['mykadNo', 'mykad_no', 'icNo', 'ic_no'],
+            _onlyId(widget.cardIdLabel),
+          ),
+        ),
+        _DetailItem(
+          'Location',
+          pickAny(['location', 'Location'], ''),
         ),
       ];
     }

@@ -62,6 +62,14 @@ class _DocDetailPageState extends State<DocDetailPage> {
     return t1.contains('passport') || t2.contains('passport');
   }
 
+  // ✅ NEW: detect International Driving License
+  bool _isInternationalDrivingLicense() {
+    final t1 = widget.docTitle.trim().toLowerCase();
+    final t2 = widget.docId.trim().toLowerCase();
+    return t1.contains('international driving') ||
+        t2.contains('international driving');
+  }
+
   // -----------------------
   // Copy helpers
   // -----------------------
@@ -398,6 +406,15 @@ class _DocDetailPageState extends State<DocDetailPage> {
                     user, const ['Nationality', 'nationality', 'Country', 'country'])
                 : widget.ownerCountry);
 
+        // ✅ International Driving License image url (from your Firebase field)
+        final idlImageUrl = _getLoose(doc, const [
+          'International Driving License',
+          'international driving license',
+          'imageUrl',
+          'image_url',
+          'url',
+        ]);
+
         final details = _getDetailsByDocType(
           ownerName: ownerName,
           ownerDob: ownerDob,
@@ -471,7 +488,6 @@ class _DocDetailPageState extends State<DocDetailPage> {
                     // ✅ Only show these buttons for Passport
                     if (_isPassportDoc()) ...[
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -500,7 +516,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: mycolors.borderprimary),
+                                  side:
+                                      BorderSide(color: mycolors.borderprimary),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -533,7 +550,8 @@ class _DocDetailPageState extends State<DocDetailPage> {
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: mycolors.borderprimary),
+                                  side:
+                                      BorderSide(color: mycolors.borderprimary),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -711,21 +729,21 @@ class _DocDetailPageState extends State<DocDetailPage> {
     required Map<String, dynamic> docData,
     required Map<String, dynamic> userData,
   }) {
+    String fromDoc(List<String> keys) => _getLoose(docData, keys);
+    String fromUser(List<String> keys) => _getLoose(userData, keys);
+
+    String safe(List<String> keys) {
+      final v = fromDoc(keys);
+      return v.isEmpty ? '-' : v;
+    }
+
+    // ================= PASSPORT =================
     if (_isPassportDoc()) {
-      String fromDoc(List<String> keys) => _getLoose(docData, keys);
-      String fromUser(List<String> keys) => _getLoose(userData, keys);
-
-      String safe(List<String> keys) {
-        final v = fromDoc(keys);
-        return v.isEmpty ? '-' : v;
-      }
-
       final name = fromDoc(['name', 'Name']).isNotEmpty
           ? fromDoc(['name', 'Name'])
           : ownerName;
 
-      final dob = fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth'])
-              .isNotEmpty
+      final dob = fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth']).isNotEmpty
           ? fromDoc(['date of birth', 'dob', 'DOB', 'Date of Birth'])
           : ownerDob;
 
@@ -736,8 +754,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
       final passportNo =
           fromDoc(['passport no', 'passport_no', 'Passport No', 'passportNo'])
                   .isNotEmpty
-              ? fromDoc(
-                  ['passport no', 'passport_no', 'Passport No', 'passportNo'])
+              ? fromDoc(['passport no', 'passport_no', 'Passport No', 'passportNo'])
               : (fromUser(['Passport No', 'passportNo']).isNotEmpty
                   ? fromUser(['Passport No', 'passportNo'])
                   : '-');
@@ -772,7 +789,33 @@ class _DocDetailPageState extends State<DocDetailPage> {
       ];
     }
 
-    // International Driving License (and others) -> simple details
+    // ================= INTERNATIONAL DRIVING LICENSE =================
+    if (_isInternationalDrivingLicense()) {
+      final imgUrl = fromDoc([
+        'International Driving License',
+        'international driving license',
+        'imageUrl',
+        'image_url',
+        'url',
+      ]);
+
+      return [
+        _DetailItem('Name', safe(['name', 'Name'])),
+        _DetailItem('Issued At', safe(['issued at', 'issued_at', 'Issued At'])),
+        _DetailItem('Issued On', safe(['issued in', 'issued_in', 'Issued In'])),
+        _DetailItem(
+            'Date of Expiry',
+            safe([
+              'date of expiry',
+              'date_of_expiry',
+              'expiry',
+              'Date of Expiry'
+            ])),
+        _DetailItem('Status', widget.docDescription),
+      ];
+    }
+
+    // ================= DEFAULT =================
     return [
       _DetailItem('Owner', ownerName),
       _DetailItem('Document', widget.docTitle),

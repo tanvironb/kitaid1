@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 
+// ✅ NEW: import forgot password page
+import 'forgot_password_page.dart';
+
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
 
@@ -156,23 +159,27 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
   }
 
+  // ✅ NEW: go to forgot password page (uses current user email if available)
+  void _goForgotPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: mycolors.Primary,
       body: SafeArea(
-        
         child: Stack(
-          
           children: [
             // Top-right back arrow
             Positioned(
               right: 16,
               top: 12,
               child: Material(
-                
                 color: Colors.white,
-                
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
@@ -180,7 +187,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   child: const SizedBox(
                     width: 36,
                     height: 36,
-                    child: Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
+                    child:
+                        Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
                   ),
                 ),
               ),
@@ -209,14 +217,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         TextFormField(
                           controller: _currentCtrl,
                           obscureText: _hideCurrent,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: mysizes.fontSm,
                           ),
                           validator: _validateCurrent,
                           decoration: _pillField('Current Password').copyWith(
                             suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => _hideCurrent = !_hideCurrent),
+                              onPressed: () => setState(
+                                  () => _hideCurrent = !_hideCurrent),
                               icon: Icon(_hideCurrent
                                   ? Icons.visibility_off_outlined
                                   : Icons.remove_red_eye_outlined),
@@ -224,18 +232,39 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 22),
+
+                        // ✅ NEW: Forgot current password link
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: _goForgotPassword,
+                            child: const Text(
+                              'Forgot current password?',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
 
                         TextFormField(
                           controller: _newCtrl,
                           obscureText: _hideNew,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: mysizes.fontSm,
                           ),
                           validator: _validateNew,
                           decoration: _pillField('New Password').copyWith(
                             suffixIcon: IconButton(
-                              onPressed: () => setState(() => _hideNew = !_hideNew),
+                              onPressed: () =>
+                                  setState(() => _hideNew = !_hideNew),
                               icon: Icon(_hideNew
                                   ? Icons.visibility_off_outlined
                                   : Icons.remove_red_eye_outlined),
@@ -248,14 +277,15 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         TextFormField(
                           controller: _confirmCtrl,
                           obscureText: _hideConfirm,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: mysizes.fontSm,
                           ),
                           validator: _validateConfirm,
-                          decoration: _pillField('Re-enter New Password').copyWith(
+                          decoration:
+                              _pillField('Re-enter New Password').copyWith(
                             suffixIcon: IconButton(
-                              onPressed: () =>
-                                  setState(() => _hideConfirm = !_hideConfirm),
+                              onPressed: () => setState(
+                                  () => _hideConfirm = !_hideConfirm),
                               icon: Icon(_hideConfirm
                                   ? Icons.visibility_off_outlined
                                   : Icons.remove_red_eye_outlined),
@@ -288,7 +318,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text('Change', style: TextStyle(fontSize: mysizes.fontSm)),
+                          : const Text('Change',
+                              style: TextStyle(fontSize: mysizes.fontSm)),
                     ),
                   ),
                 ),
