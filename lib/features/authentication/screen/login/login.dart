@@ -9,6 +9,9 @@ import 'package:kitaid1/utilities/constant/color.dart';
 import 'package:kitaid1/utilities/constant/sizes.dart';
 import 'package:kitaid1/utilities/constant/texts.dart';
 
+// ✅ NEW: Forgot Password page
+import 'package:kitaid1/features/settings/forgot_password_page.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -420,6 +423,32 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                             ),
                           ),
+
+                          // ✅ NEW: Forgot password link (no other UI changes)
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ForgotPasswordPage(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'Forgot password?',
+                                style: TextStyle(
+                                  color: Colors.black.withOpacity(0.75),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                          ),
+
                           const SizedBox(height: 18),
                           SizedBox(
                             width: size.width * 0.35,
