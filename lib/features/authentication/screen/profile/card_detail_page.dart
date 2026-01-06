@@ -31,10 +31,10 @@ class CardDetailPage extends StatefulWidget {
   final String ownerDob;
   final String ownerCountry;
 
-  /// Local asset fallback 
+  /// Local asset fallback
   final String? imageAsset;
 
-  /// Firebase Storage download URL 
+  /// Firebase Storage download URL
   final String? imageUrl;
 
   @override
@@ -91,10 +91,13 @@ class _CardDetailPageState extends State<CardDetailPage> {
       'MyKad',
       'I-Kad',
       'i-kad',
+      'IKad',
+      'iKad',
       'license',
       'licence',
       'drivingLicense',
       'driving_license',
+      'Driving License',
     ];
 
     for (final k in keysToTry) {
@@ -110,6 +113,23 @@ class _CardDetailPageState extends State<CardDetailPage> {
     return null;
   }
 
+  bool _isMyKadDocId(String? id) {
+    if (id == null) return false;
+    final s = id.trim();
+    if (s.isEmpty) return false;
+    final l = s.toLowerCase();
+    // ✅ MyKad / IC only (NOT i-kad)
+    return l == 'mykad' || l.contains('mykad') || l == 'ic';
+  }
+
+  bool _isIKadDocId(String? id) {
+    if (id == null) return false;
+    final s = id.trim();
+    if (s.isEmpty) return false;
+    final l = s.toLowerCase();
+    return l == 'i-kad' || l.contains('i-kad') || l == 'ikad' || l.contains('ikad');
+  }
+
   void _toast(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -123,12 +143,13 @@ class _CardDetailPageState extends State<CardDetailPage> {
   String _favoriteKey() {
     final t = widget.cardTitle.trim().toLowerCase();
     if (t.contains('driving')) return 'driving_license';
-    if (t.contains('mykad') || t.contains('i-kad') || t == 'ic') return 'ic';
+    if (t.contains('mykad') || t.contains('i-kad') || t.contains('ikad') || t == 'ic') {
+      return 'ic';
+    }
     return t.replaceAll(RegExp(r'\s+'), '_');
   }
 
   String _cardDocIdForVerify() {
-    // ✅ Use actual Firestore doc id if we found one (MyKad / I-Kad)
     if (_resolvedCardType != null && _resolvedCardType!.trim().isNotEmpty) {
       return _resolvedCardType!.trim();
     }
@@ -136,12 +157,12 @@ class _CardDetailPageState extends State<CardDetailPage> {
     final t = widget.cardTitle.trim().toLowerCase();
     if (t.contains('driving')) return 'Driving License';
     if (t.contains('mykad')) return 'MyKad';
-    if (t.contains('i-kad')) return 'I-Kad';
+    if (t.contains('i-kad') || t.contains('ikad')) return 'I-Kad';
     if (t == 'ic') return 'IC';
     return widget.cardTitle.trim();
   }
 
-  /// QR payload 
+  /// QR payload
   String _buildVerificationQrData() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return '';
@@ -182,17 +203,21 @@ class _CardDetailPageState extends State<CardDetailPage> {
               'license',
               'licence',
             ]
-          : (t.contains('mykad') || t.contains('i-kad') || t == 'ic')
+          : (t.contains('mykad') || t.contains('i-kad') || t.contains('ikad') || t == 'ic')
               ? [
-                  // ✅ MyKad / I-Kad variants
+                  // ✅ MyKad / I-Kad variants (case sensitive accept)
                   'MyKad',
                   'mykad',
+                  'MYKAD',
                   'I-Kad',
                   'i-kad',
+                  'i-Kad',
                   'IKad',
                   'iKad',
+                  'ikad',
                   'IC',
                   'ic',
+                  'Ic',
                   'mykad card',
                   'ic card',
                 ]
@@ -215,7 +240,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
       }
 
       final data = found?.data();
-      final resolvedType = found?.id; // ✅ exact doc id we matched
+      final resolvedType = found?.id;
       final url = fetchImage ? _extractAnyUrl(data) : null;
 
       if (!mounted) return;
@@ -321,7 +346,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
     try {
       final doc = pw.Document();
 
-      // Card image (optional)
       pw.ImageProvider? cardImg;
       if (networkImageUrl != null && networkImageUrl.trim().isNotEmpty) {
         cardImg = await networkImage(networkImageUrl.trim());
@@ -330,7 +354,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
         cardImg = pw.MemoryImage(bytes.buffer.asUint8List());
       }
 
-      // QR image bytes
       final qrPainter = QrPainter(
         data: qrData.isEmpty ? 'not_logged_in' : qrData,
         version: QrVersions.auto,
@@ -376,7 +399,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                                 child: pw.Center(
                                   child: pw.Image(
                                     cardImg,
-                                    fit: pw.BoxFit.contain, // ✅ full card
+                                    fit: pw.BoxFit.contain,
                                   ),
                                 ),
                               ),
@@ -442,7 +465,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
       final bytes = await doc.save();
 
-      // ✅ System dialog -> Save as PDF / Print / Share
       await Printing.layoutPdf(
         onLayout: (format) async => bytes,
         name: '${title.replaceAll(' ', '_')}_details.pdf',
@@ -505,7 +527,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
         child: ListView(
           padding: const EdgeInsets.all(mysizes.defaultspace),
           children: [
-            // ================= CARD IMAGE =================
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: AspectRatio(
@@ -554,7 +575,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
             ),
             const SizedBox(height: 14),
 
-            // ================= QR (POLICE SCAN) =================
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
@@ -573,7 +593,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
             const SizedBox(height: 18),
 
-            // ================= DETAILS TITLE + ACTIONS =================
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -633,7 +652,6 @@ class _CardDetailPageState extends State<CardDetailPage> {
 
             const SizedBox(height: 10),
 
-            // ================= DETAILS BOX =================
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -676,9 +694,11 @@ class _CardDetailPageState extends State<CardDetailPage> {
     return widgets;
   }
 
+  // ✅ UPDATED: MyKad vs I-Kad details
   List<_DetailItem> _getDetailsByCardType() {
     final t = widget.cardTitle.trim().toLowerCase();
     final data = _cardData ?? {};
+    final resolved = _resolvedCardType?.trim() ?? '';
 
     String pickAny(List<String> keys, String fallback) {
       for (final k in keys) {
@@ -690,40 +710,154 @@ class _CardDetailPageState extends State<CardDetailPage> {
       return fallback;
     }
 
-    if (t.contains('mykad') || t.contains('i-kad') || t == 'ic') {
-      final cardTypeShown = (_resolvedCardType != null &&
-              _resolvedCardType!.trim().isNotEmpty)
-          ? _resolvedCardType!.trim()
-          : widget.cardTitle.trim();
+    // ✅ detect actual type from Firestore doc id first
+    final isMyKad = _isMyKadDocId(resolved) || t.contains('mykad') || t == 'ic';
+    final isIKad = _isIKadDocId(resolved) || t.contains('i-kad') || t.contains('ikad');
+
+    if (isMyKad) {
+      final cardTypeShown = resolved.isNotEmpty ? resolved : widget.cardTitle.trim();
 
       return [
-        _DetailItem('Card Type', cardTypeShown), // ✅ MyKad or I-Kad
-        _DetailItem('Name', pickAny(['name', 'Name'], widget.ownerName)),
+        _DetailItem('Card Type', cardTypeShown),
+        _DetailItem('Name', pickAny(['name', 'Name', 'NAME'], widget.ownerName)),
         _DetailItem(
           'Date of Birth',
           pickAny(
-            ['dob', 'DOB', 'Date of Birth', 'date of birth'],
+            ['dob', 'DOB', 'Date of Birth', 'dateOfBirth', 'date of birth'],
             widget.ownerDob,
           ),
         ),
         _DetailItem(
           'Nationality',
-          pickAny(['nationality', 'Nationality'], widget.ownerCountry),
+          pickAny(['nationality', 'Nationality', 'NATIONALITY'], widget.ownerCountry),
         ),
         _DetailItem(
           'MyKad No',
           pickAny(
-            ['mykadNo', 'mykad_no', 'icNo', 'ic_no'],
+            [
+              'icNo',
+              'ICNo',
+              'IC No',
+              'ic_no',
+              'mykadNo',
+              'MyKadNo',
+              'MyKad No',
+              'MYKADNO',
+            ],
             _onlyId(widget.cardIdLabel),
           ),
         ),
         _DetailItem(
           'Location',
-          pickAny(['location', 'Location'], ''),
+          pickAny(['location', 'Location', 'LOCATION'], ''),
         ),
       ];
     }
 
+    if (isIKad) {
+      final cardTypeShown = resolved.isNotEmpty ? resolved : widget.cardTitle.trim();
+
+      return [
+        _DetailItem('Card Type', cardTypeShown),
+        _DetailItem('Name', pickAny(['name', 'Name', 'NAME'], widget.ownerName)),
+        _DetailItem(
+          'Date of Birth',
+          pickAny(
+            ['dob', 'DOB', 'Date of Birth', 'dateOfBirth', 'date of birth'],
+            widget.ownerDob,
+          ),
+        ),
+        _DetailItem(
+          'Nationality',
+          pickAny(['nationality', 'Nationality', 'NATIONALITY'], widget.ownerCountry),
+        ),
+
+        // ✅ Passport No (only for i-Kad)
+        _DetailItem(
+          'Passport No',
+          pickAny(
+            [
+              'passport no',
+              'Passport No',
+              'PASSPORT NO',
+              'passportNo',
+              'passport_no',
+              'PassportNo',
+              'PASSPORTNO',
+            ],
+            _onlyId(widget.cardIdLabel),
+          ),
+        ),
+
+        // ✅ Extra fields for i-Kad
+        _DetailItem(
+          'Expiry Date',
+          pickAny(
+            [
+              'expiry date',
+              'Expiry Date',
+              'EXPIRY DATE',
+              'expiryDate',
+              'expiry_date',
+              'validUntil',
+              'valid_until',
+              'Validity',
+              'validity',
+            ],
+            '',
+          ),
+        ),
+        _DetailItem(
+          'Institution',
+          pickAny(
+            [
+              'institution',
+              'Institution',
+              'INSTITUTION',
+              'instituation', // (typo-safe)
+              'Instituation',
+              'INSTITUATION',
+            ],
+            '',
+          ),
+        ),
+        _DetailItem(
+          'Reference No',
+          pickAny(
+            [
+              'reference no',
+              'Reference No',
+              'REFERENCE NO',
+              'referenceNo',
+              'reference_no',
+              'refNo',
+              'ref_no',
+            ],
+            '',
+          ),
+        ),
+        _DetailItem(
+          'Gender',
+          pickAny(
+            [
+              'gender',
+              'Gender',
+              'GENDER',
+              'sex',
+              'Sex',
+              'SEX',
+            ],
+            '',
+          ),
+        ),
+        _DetailItem(
+          'Location',
+          pickAny(['location', 'Location', 'LOCATION'], ''),
+        ),
+      ];
+    }
+
+    // ✅ DON'T TOUCH license and other things
     if (t.contains('driving')) {
       return [
         _DetailItem('Name', pickAny(['Name', 'name'], widget.ownerName)),
@@ -778,7 +912,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
             Text(
               '$label: ',
               style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 fontSize: mysizes.fontMd,
                 color: mycolors.textPrimary,
               ),
@@ -789,7 +923,7 @@ class _CardDetailPageState extends State<CardDetailPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
                   fontSize: mysizes.fontMd,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),

@@ -14,27 +14,56 @@ class VerificationPage extends StatelessWidget {
     return payload != null && payload['type'] == 'kitaid_verify';
   }
 
- 
-  // CARDS 
- 
+  // -------------------------
+  // Helpers (case-insensitive detection)
+  // -------------------------
+  bool _isMyKadOrIcId(String id) {
+    final t = id.trim().toLowerCase();
+    // ✅ MyKad / IC only (NOT i-kad)
+    return t == 'ic' || t == 'mykad' || t.contains('mykad');
+  }
 
+  bool _isIKadId(String id) {
+    final t = id.trim().toLowerCase();
+    return t == 'i-kad' || t.contains('i-kad') || t == 'ikad' || t.contains('ikad');
+  }
+
+  // -------------------------
+  // CARDS
+  // -------------------------
   List<String> _cardDocCandidates(String cardIdFromQr) {
     final t = cardIdFromQr.trim().toLowerCase();
 
-    if (t == 'ic' || t == 'mykad') {
+    // ✅ IC / MyKad candidates
+    if (_isMyKadOrIcId(cardIdFromQr)) {
       return [
         'IC',
         'ic',
+        'Ic',
         'MyKad',
         'mykad',
-        'ic card',
+        'MYKAD',
         'mykad card',
+        'ic card',
       ];
     }
 
+    // ✅ i-Kad candidates
+    if (_isIKadId(cardIdFromQr)) {
+      return [
+        'I-Kad',
+        'i-kad',
+        'i-Kad',
+        'IKad',
+        'iKad',
+        'ikad',
+      ];
+    }
+
+    // ✅ Driving License candidates (unchanged)
     if (t.contains('driving')) {
       return [
-        'Driving License', 
+        'Driving License',
         'driving license',
         'Driving Licence',
         'driving licence',
@@ -48,7 +77,7 @@ class VerificationPage extends StatelessWidget {
     return [cardIdFromQr, t];
   }
 
-  ///  get the existing card document and return its data (or null)
+  /// get the existing card document and return its data (or null)
   Future<Map<String, dynamic>?> _fetchCardData({
     required String uid,
     required String cardIdFromQr,
@@ -80,7 +109,7 @@ class VerificationPage extends StatelessWidget {
     return fallback;
   }
 
-  /// which fields to show per card type
+  /// ✅ NEW: extract fields per card type (MyKad vs i-Kad vs Driving)
   Map<String, String> _extractCardFields({
     required String cardIdFromQr,
     required Map<String, dynamic>? cardData,
@@ -90,8 +119,17 @@ class VerificationPage extends StatelessWidget {
 
     if (!exists) {
       return {
+        'cardType': cardIdFromQr,
+        'name': '-',
         'dob': '-',
         'nationality': '-',
+        'location': '-',
+        'mykadNo': '-',
+        'passportNo': '-',
+        'expiryDate': '-',
+        'institution': '-',
+        'referenceNo': '-',
+        'gender': '-',
         'address': '-',
         'class': '-',
         'identityNo': '-',
@@ -101,27 +139,161 @@ class VerificationPage extends StatelessWidget {
 
     final data = cardData!;
 
-    final nationality = _pick(data, ['nationality', 'Nationality'], '-');
-    final address = _pick(
+    final name = _pick(data, ['name', 'Name', 'NAME'], '-');
+    final dob = _pick(
       data,
-      ['location', 'address', 'Address'],
+      ['dob', 'DOB', 'Date of Birth', 'dateOfBirth', 'date of birth'],
+      '-',
+    );
+    final nationality = _pick(
+      data,
+      ['nationality', 'Nationality', 'NATIONALITY'],
+      '-',
+    );
+    final location = _pick(
+      data,
+      ['location', 'Location', 'LOCATION', 'address', 'Address'],
       '-',
     );
 
-    if (t == 'ic' || t == 'mykad') {
-      final dob = _pick(data, ['dob', 'DOB', 'dateOfBirth'], '-');
+    // ✅ MyKad/IC
+    if (_isMyKadOrIcId(cardIdFromQr) || t == 'ic' || t == 'mykad') {
+      final mykadNo = _pick(
+        data,
+        [
+          'icNo',
+          'ICNo',
+          'IC No',
+          'ic_no',
+          'mykadNo',
+          'MyKadNo',
+          'MyKad No',
+          'MYKADNO',
+        ],
+        '-',
+      );
+
       return {
+        'cardType': cardIdFromQr,
+        'name': name,
         'dob': dob,
         'nationality': nationality,
-        'address': address,
+        'location': location,
+        'mykadNo': mykadNo,
+        'passportNo': '-',
+        'expiryDate': '-',
+        'institution': '-',
+        'referenceNo': '-',
+        'gender': '-',
+        'address': '-',
         'class': '-',
         'identityNo': '-',
         'validity': '-',
       };
     }
 
+    // ✅ i-Kad
+    if (_isIKadId(cardIdFromQr)) {
+      final passportNo = _pick(
+        data,
+        [
+          'passport no',
+          'Passport No',
+          'PASSPORT NO',
+          'passportNo',
+          'passport_no',
+          'PassportNo',
+          'PASSPORTNO',
+        ],
+        '-',
+      );
+
+      final expiryDate = _pick(
+        data,
+        [
+          'expiry date',
+          'Expiry Date',
+          'EXPIRY DATE',
+          'expiryDate',
+          'expiry_date',
+          'date of expiry',
+          'Date of Expiry',
+          'date_of_expiry',
+          'validUntil',
+          'valid_until',
+        ],
+        '-',
+      );
+
+      final institution = _pick(
+        data,
+        [
+          'institution',
+          'Institution',
+          'INSTITUTION',
+          'instituation', // typo-safe
+          'Instituation',
+          'INSTITUATION',
+        ],
+        '-',
+      );
+
+      final referenceNo = _pick(
+        data,
+        [
+          'reference no',
+          'Reference No',
+          'REFERENCE NO',
+          'referenceNo',
+          'reference_no',
+          'refNo',
+          'ref_no',
+        ],
+        '-',
+      );
+
+      final gender = _pick(
+        data,
+        [
+          'gender',
+          'Gender',
+          'GENDER',
+          'sex',
+          'Sex',
+          'SEX',
+        ],
+        '-',
+      );
+
+      return {
+        'cardType': cardIdFromQr,
+        'name': name,
+        'dob': dob,
+        'nationality': nationality,
+        'location': location,
+        'mykadNo': '-',
+        'passportNo': passportNo,
+        'expiryDate': expiryDate,
+        'institution': institution,
+        'referenceNo': referenceNo,
+        'gender': gender,
+        'address': '-',
+        'class': '-',
+        'identityNo': '-',
+        'validity': '-',
+      };
+    }
+
+    // ✅ Driving License (unchanged)
     if (t.contains('driving')) {
+      final address = _pick(
+        data,
+        ['address', 'Address', 'location', 'Location'],
+        '-',
+      );
+
       final licenseClass = _pick(data, ['class', 'Class'], '-');
+
       final identityNo = _pick(
         data,
         [
@@ -136,11 +308,25 @@ class VerificationPage extends StatelessWidget {
         ],
         '-',
       );
-      final validity = _pick(data, ['validity', 'Validity'], '-');
+
+      final validity = _pick(
+        data,
+        ['validity', 'Validity', 'validFromTo', 'valid_from_to'],
+        '-',
+      );
 
       return {
+        'cardType': cardIdFromQr,
+        'name': name,
         'dob': '-',
         'nationality': nationality,
+        'location': address,
+        'mykadNo': '-',
+        'passportNo': '-',
+        'expiryDate': '-',
+        'institution': '-',
+        'referenceNo': '-',
+        'gender': '-',
         'address': address,
         'class': licenseClass,
         'identityNo': identityNo,
@@ -148,18 +334,29 @@ class VerificationPage extends StatelessWidget {
       };
     }
 
+    // ✅ Other cards (fallback)
     return {
-      'dob': _pick(data, ['dob', 'DOB', 'dateOfBirth'], '-'),
+      'cardType': cardIdFromQr,
+      'name': name,
+      'dob': dob,
       'nationality': nationality,
-      'address': address,
+      'location': location,
+      'mykadNo': '-',
+      'passportNo': '-',
+      'expiryDate': '-',
+      'institution': '-',
+      'referenceNo': '-',
+      'gender': '-',
+      'address': location,
       'class': _pick(data, ['class', 'Class'], '-'),
       'identityNo': _pick(data, ['identity no', 'identityNo', 'ic', 'IC'], '-'),
       'validity': _pick(data, ['validity', 'Validity'], '-'),
     };
   }
 
-  
-  // DOCS
+  // -------------------------
+  // DOCS (unchanged)
+  // -------------------------
   String _getLoose(Map<String, dynamic> map, List<String> keys, String fallback) {
     String norm(String s) =>
         s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
@@ -213,7 +410,6 @@ class VerificationPage extends StatelessWidget {
     final docId = isValid ? (payload!['docId']?.toString() ?? '') : '';
     final docTitleFromQr = isValid ? (payload!['docTitle']?.toString() ?? '') : '';
 
-    //  SCROLLABLE UI
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -232,9 +428,7 @@ class VerificationPage extends StatelessWidget {
                 child: (!isValid || uid.isEmpty)
                     ? _error(theme, 'Invalid QR code (missing uid)')
                     : (kind == 'doc')
-                       
-                        // DOC VERIFICATION UI
-                       
+                        // DOC UI (kept as your code)
                         ? FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
                             builder: (context, userSnap) {
@@ -387,7 +581,6 @@ class VerificationPage extends StatelessWidget {
                                           ),
                                           _row(theme, 'Phone:', phone),
                                         ],
-
                                         const SizedBox(height: 6),
                                       ],
                                     ),
@@ -396,9 +589,9 @@ class VerificationPage extends StatelessWidget {
                               );
                             },
                           )
-                       
-                        // CARDS VERIFICATION UI 
-                        
+                        // -------------------------
+                        // CARDS UI (UPDATED)
+                        // -------------------------
                         : FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             future: FirebaseFirestore.instance.collection('Users').doc(uid).get(),
                             builder: (context, userSnap) {
@@ -410,8 +603,8 @@ class VerificationPage extends StatelessWidget {
                               }
 
                               final user = userSnap.data!.data() ?? {};
-                              final name = (user['Name'] ?? '-').toString();
-                              final ic =
+                              final nameFromUser = (user['Name'] ?? '-').toString();
+                              final icPassportFromUser =
                                   (user['IC No'] ?? user['Passport No'] ?? '-').toString();
                               final phone = (user['Phone No'] ?? '-').toString();
 
@@ -432,7 +625,27 @@ class VerificationPage extends StatelessWidget {
 
                                   final t = cardId.trim().toLowerCase();
                                   final isDriving = t.contains('driving');
-                                  final isIc = (t == 'ic' || t == 'mykad');
+                                  final isMyKad = _isMyKadOrIcId(cardId);
+                                  final isIKad = _isIKadId(cardId);
+
+                                  // ✅ If card has "name", prefer it, else user name
+                                  final displayName =
+                                      (extracted['name'] ?? '').trim().isNotEmpty &&
+                                              extracted['name'] != '-'
+                                          ? extracted['name']!
+                                          : nameFromUser;
+
+                                  // ✅ Show correct top ID line depending on card type
+                                  String idLineLabel = 'IC/Passport:';
+                                  String idLineValue = icPassportFromUser;
+
+                                  if (isMyKad) {
+                                    idLineLabel = 'MyKad No:';
+                                    idLineValue = extracted['mykadNo'] ?? '-';
+                                  } else if (isIKad) {
+                                    idLineLabel = 'Passport No:';
+                                    idLineValue = extracted['passportNo'] ?? '-';
+                                  }
 
                                   return Container(
                                     width: double.infinity,
@@ -460,14 +673,23 @@ class VerificationPage extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 18),
 
-                                        _row(theme, 'Name:', name),
-                                        _row(theme, 'IC/Passport:', ic),
+                                        _row(theme, 'Name:', displayName),
+                                        _row(theme, idLineLabel, idLineValue),
 
-                                        if (isIc) ...[
+                                        if (isMyKad) ...[
                                           _row(theme, 'Date of Birth:', extracted['dob'] ?? '-'),
                                           _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
                                           _row(theme, 'Phone:', phone),
-                                          _row(theme, 'Address:', extracted['address'] ?? '-'),
+                                          _row(theme, 'Location:', extracted['location'] ?? '-'),
+                                        ] else if (isIKad) ...[
+                                          _row(theme, 'Date of Birth:', extracted['dob'] ?? '-'),
+                                          _row(theme, 'Nationality:', extracted['nationality'] ?? '-'),
+                                          _row(theme, 'Gender:', extracted['gender'] ?? '-'),
+                                          _row(theme, 'Expiry Date:', extracted['expiryDate'] ?? '-'),
+                                          _row(theme, 'Institution:', extracted['institution'] ?? '-'),
+                                          _row(theme, 'Reference No:', extracted['referenceNo'] ?? '-'),
+                                          _row(theme, 'Phone:', phone),
+                                          _row(theme, 'Location:', extracted['location'] ?? '-'),
                                         ] else if (isDriving) ...[
                                           _row(theme, 'Identity No:', extracted['identityNo'] ?? '-'),
                                           _row(theme, 'Class:', extracted['class'] ?? '-'),
@@ -521,6 +743,7 @@ class VerificationPage extends StatelessWidget {
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: mycolors.textPrimary,
                 fontSize: mysizes.fontMd,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),

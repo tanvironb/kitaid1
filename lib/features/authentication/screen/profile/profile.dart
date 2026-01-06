@@ -16,14 +16,10 @@ class ProfilePage extends StatefulWidget {
 }
 
 class ProfileCardItem {
-  final String id; // Firestore doc id
+  final String id;
   final String title;
   final String idLabel;
-
-  /// Network image url from Firestore 
   final String? imageUrl;
-
-  /// Local asset fallback 
   final String? imageAsset;
 
   const ProfileCardItem({
@@ -39,11 +35,7 @@ class ProfileDocItem {
   final String id;
   final String title;
   final String description;
-
-  /// Passport cover / doc preview URL
   final String? previewUrl;
-
-  /// Passport number from Firestore 
   final String? passportNo;
 
   const ProfileDocItem({
@@ -57,7 +49,6 @@ class ProfileDocItem {
 
 class _ProfilePageState extends State<ProfilePage> {
   int _selectedTab = 0;
-
   User? get _user => FirebaseAuth.instance.currentUser;
 
   bool _looksLikeUrl(String? v) {
@@ -96,9 +87,7 @@ class _ProfilePageState extends State<ProfilePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
           ),
         ],
       ),
@@ -125,35 +114,64 @@ class _ProfilePageState extends State<ProfilePage> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final data = snap.data?.data() ?? {};
+                  final userData = snap.data?.data() ?? {};
 
-                  final name = (data['Name'] ?? '').toString().trim();
-                  final ic = (data['IC No'] ?? '').toString().trim();
-                  final phone = (data['Phone No'] ?? '').toString().trim();
+                  final displayName = _pick(
+                    userData,
+                    const ['Name', 'name', 'fullName', 'fullname'],
+                    'User',
+                  );
 
-                  // fallback fields
-                  final fallbackNationality =
-                      (data['Nationality'] ?? data['Country'] ?? '')
+                  final phone = _pick(
+                    userData,
+                    const ['Phone No', 'phone', 'phoneNo', 'phone_no'],
+                    '',
+                  );
+
+                  // ✅ fallback fields from Users doc
+                  final fallbackNationality = _pick(
+                    userData,
+                    const ['nationality', 'Nationality', 'Country', 'country'],
+                    '',
+                  );
+
+                  final fallbackDob = _pick(
+                    userData,
+                    const [
+                      'dob',
+                      'DOB',
+                      'Date of Birth',
+                      'dateOfBirth',
+                      'date of birth'
+                    ],
+                    '',
+                  );
+
+                  // ✅ user passport (from Users doc, any casing)
+                  final userPassportNo = _pick(
+                    userData,
+                    const [
+                      'Passport No',
+                      'passportNo',
+                      'passport_no',
+                      'PassportNo',
+                      'PASSPORTNO',
+                      'passport no',
+                      'PASSPORT NO',
+                    ],
+                    '',
+                  ).trim();
+
+                  // ✅ photo
+                  final firestorePhotoUrl =
+                      (userData['photoUrl'] ?? userData['photoURL'] ?? '')
                           .toString()
                           .trim();
-                  final fallbackDob =
-                      (data['dob'] ?? data['DOB'] ?? '').toString().trim();
-
-                  // profile photo url from Firestore
-                  final firestorePhotoUrl =
-                      (data['photoUrl'] ?? '').toString().trim();
-
-                  // fallback: FirebaseAuth photoURL
                   final authPhotoUrl = _user?.photoURL?.trim() ?? '';
-
                   final resolvedPhotoUrl = _looksLikeUrl(firestorePhotoUrl)
                       ? firestorePhotoUrl
                       : (_looksLikeUrl(authPhotoUrl) ? authPhotoUrl : '');
 
-                  final displayName = name.isNotEmpty ? name : 'User';
-                  final displayId = ic.isNotEmpty ? ic : uid;
-
-                  //  Read DOB + Nationality from cards collection 
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('Users')
@@ -163,39 +181,117 @@ class _ProfilePageState extends State<ProfilePage> {
                     builder: (context, cardSnap) {
                       final cardDocs = cardSnap.data?.docs ?? [];
 
-                      DocumentSnapshot<Map<String, dynamic>>? icDoc;
+                      // ✅ Find real MyKad/IC doc (NOT i-kad)
+                      DocumentSnapshot<Map<String, dynamic>>? mykadDoc;
+                      // ✅ Find i-kad doc (passport-based card)
+                      DocumentSnapshot<Map<String, dynamic>>? ikadDoc;
+
                       for (final d in cardDocs) {
                         final idLower = d.id.toLowerCase().trim();
-                        if (idLower == 'ic' ||
-                            idLower == 'mykad' ||
-                            idLower.contains('mykad')) {
-                          icDoc = d;
-                          break;
+                        if (idLower == 'mykad' ||
+                            idLower.contains('mykad') ||
+                            idLower == 'ic') {
+                          mykadDoc = d;
                         }
-                        if (d.id == 'IC') {
-                          icDoc = d;
-                          break;
+                        if (idLower == 'i-kad' ||
+                            idLower.contains('i-kad') ||
+                            idLower == 'ikad' ||
+                            idLower.contains('ikad')) {
+                          ikadDoc = d;
                         }
                       }
 
-                      final cardData = icDoc?.data() ?? {};
+                      final mykadData = mykadDoc?.data() ?? {};
+                      final ikadData = ikadDoc?.data() ?? {};
 
-                      final nationalityFromCard =
-                          _pick(cardData, ['nationality', 'Nationality'], '');
-                      final dobFromCard =
-                          _pick(cardData, ['dob', 'DOB', 'dateOfBirth'], '');
+                      // ✅ Use whichever exists for DOB/Nationality
+                      final baseData = mykadData.isNotEmpty ? mykadData : ikadData;
 
-                      final displayNationality = (nationalityFromCard.isNotEmpty
+                      final nationalityFromCard = _pick(
+                        baseData,
+                        const ['nationality', 'Nationality', 'NATIONALITY'],
+                        '',
+                      );
+
+                      final dobFromCard = _pick(
+                        baseData,
+                        const [
+                          'dob',
+                          'DOB',
+                          'Date of Birth',
+                          'dateOfBirth',
+                          'date of birth'
+                        ],
+                        '',
+                      );
+
+                      final showNationality = (nationalityFromCard.isNotEmpty
                               ? nationalityFromCard
                               : fallbackNationality)
                           .trim();
-                      final displayDob =
+                      final showDob =
                           (dobFromCard.isNotEmpty ? dobFromCard : fallbackDob)
                               .trim();
 
-                      final showNationality =
-                          displayNationality.isNotEmpty ? displayNationality : '-';
-                      final showDob = displayDob.isNotEmpty ? displayDob : '-';
+                      final displayNationality =
+                          showNationality.isNotEmpty ? showNationality : '-';
+                      final displayDob = showDob.isNotEmpty ? showDob : '-';
+
+                      // ✅ MyKad No ONLY from a real MyKad/IC card (or mykadData)
+                      final mykadNoFromMyKadCard = _pick(
+                        mykadData,
+                        const [
+                          'icNo',
+                          'ICNo',
+                          'IC No',
+                          'ic_no',
+                          'mykadNo',
+                          'MyKadNo',
+                          'MyKad No',
+                          'MYKADNO',
+                        ],
+                        '',
+                      ).trim();
+
+                      // ✅ Passport No can be stored inside I-Kad card as "passport no"
+                      final passportNoFromIkadCard = _pick(
+                        ikadData,
+                        const [
+                          'passport no',
+                          'Passport No',
+                          'PASSPORT NO',
+                          'passportNo',
+                          'passport_no',
+                          'PassportNo',
+                          'PASSPORTNO',
+                        ],
+                        '',
+                      ).trim();
+
+                      // ✅ Decide top label/value:
+                      // - If MyKad/IC card exists AND has ic/mykad number => show MyKad No
+                      // - Else if passport exists (from i-kad card or user doc) => show Passport No
+                      // - Else fallback to UID
+                      final String topLabel;
+                      final String topValue;
+
+                      if (mykadNoFromMyKadCard.isNotEmpty) {
+                        topLabel = 'MyKad No';
+                        topValue = mykadNoFromMyKadCard;
+                      } else {
+                        final resolvedPassport =
+                            passportNoFromIkadCard.isNotEmpty
+                                ? passportNoFromIkadCard
+                                : userPassportNo;
+
+                        if (resolvedPassport.isNotEmpty) {
+                          topLabel = 'Passport No';
+                          topValue = resolvedPassport;
+                        } else {
+                          topLabel = 'User ID';
+                          topValue = uid;
+                        }
+                      }
 
                       return SingleChildScrollView(
                         padding: const EdgeInsets.all(mysizes.defaultspace),
@@ -210,17 +306,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(2), 
+                                      padding: const EdgeInsets.all(2),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
-                                          color: mycolors.Primary, 
+                                          color: mycolors.Primary,
                                           width: 2,
                                         ),
                                       ),
                                       child: CircleAvatar(
                                         radius: 28,
-                                        backgroundColor: theme.colorScheme.secondaryContainer,
+                                        backgroundColor:
+                                            theme.colorScheme.secondaryContainer,
                                         backgroundImage: resolvedPhotoUrl.isNotEmpty
                                             ? NetworkImage(resolvedPhotoUrl)
                                             : const AssetImage(
@@ -230,16 +327,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                             ? null
                                             : Icon(
                                                 Icons.person,
-                                                color: theme.colorScheme.onSecondaryContainer,
+                                                color: theme.colorScheme
+                                                    .onSecondaryContainer,
                                                 size: 26,
                                               ),
                                       ),
                                     ),
-
                                     const SizedBox(width: 16),
                                     Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           displayName,
@@ -251,14 +347,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
+
+                                        // ✅ Dynamic top field
                                         Text(
-                                          'IC: $displayId',
+                                          '$topLabel: $topValue',
                                           style: theme.textTheme.bodyMedium
                                               ?.copyWith(
                                             color: mycolors.textPrimary,
                                             fontSize: mysizes.fontSm,
                                           ),
                                         ),
+
                                         if (phone.isNotEmpty) ...[
                                           const SizedBox(height: 2),
                                           Text(
@@ -291,7 +390,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ),
                                         Text(
-                                          showNationality,
+                                          displayNationality,
                                           style:
                                               theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 11,
@@ -315,7 +414,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                           ),
                                         ),
                                         Text(
-                                          showDob,
+                                          displayDob,
                                           style:
                                               theme.textTheme.bodySmall?.copyWith(
                                             fontSize: 11,
@@ -361,15 +460,15 @@ class _ProfilePageState extends State<ProfilePage> {
                               _CardsFromFirestore(
                                 uid: uid,
                                 ownerName: displayName,
-                                ownerDob: showDob,
-                                ownerCountry: showNationality,
+                                ownerDob: displayDob,
+                                ownerCountry: displayNationality,
                               )
                             else
                               _DocsFromFirestore(
                                 uid: uid,
                                 ownerName: displayName,
-                                ownerDob: showDob,
-                                ownerCountry: showNationality,
+                                ownerDob: displayDob,
+                                ownerCountry: displayNationality,
                               ),
                           ],
                         ),
@@ -401,7 +500,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   context, '/notifications', (_) => false);
               break;
             case 4:
-              Navigator.pushNamedAndRemoveUntil(context, '/profile', (_) => false);
+              Navigator.pushNamedAndRemoveUntil(
+                  context, '/profile', (_) => false);
               break;
           }
         },
@@ -448,9 +548,7 @@ class _SegmentTab extends StatelessWidget {
   }
 }
 
-
 /// CARDS FROM FIRESTORE
-
 class _CardsFromFirestore extends StatelessWidget {
   const _CardsFromFirestore({
     required this.uid,
@@ -476,26 +574,32 @@ class _CardsFromFirestore extends StatelessWidget {
 
     const keys = [
       'imageUrl',
+      'imageURL',
       'url',
       'front',
       'card',
       'photo',
       'ic',
+      'IC',
       'mykad',
       'MyKad',
+      'I-Kad',
+      'i-kad',
+      'i-Kad',
       'license',
       'licence',
       'drivingLicense',
+      'driving_license',
     ];
 
     for (final k in keys) {
       final v = asString(data[k]);
-      if (_looksLikeUrl(v)) return v!;
+      if (v != null && _looksLikeUrl(v)) return v;
     }
 
     for (final e in data.entries) {
       final v = asString(e.value);
-      if (_looksLikeUrl(v)) return v!;
+      if (v != null && _looksLikeUrl(v)) return v;
     }
 
     return null;
@@ -521,7 +625,8 @@ class _CardsFromFirestore extends StatelessWidget {
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  vertical: mysizes.spacebtwsections),
+                vertical: mysizes.spacebtwsections,
+              ),
               child: Text(
                 'No cards yet.',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -535,8 +640,10 @@ class _CardsFromFirestore extends StatelessWidget {
 
         final cards = docs.map((d) {
           final data = d.data();
-          final title = (data['title'] ?? d.id).toString().trim();
-          final rawIdLabel = (data['idLabel'] ?? '').toString().trim();
+          final title =
+              (data['title'] ?? data['Title'] ?? d.id).toString().trim();
+          final rawIdLabel =
+              (data['idLabel'] ?? data['IdLabel'] ?? '').toString().trim();
           final idLabel = rawIdLabel.isNotEmpty ? rawIdLabel : 'ID: -';
 
           final imageUrl = _pickImageUrl(data);
@@ -680,9 +787,7 @@ class _CardTile extends StatelessWidget {
   }
 }
 
-
 /// DOCS FROM FIRESTORE
-
 class _DocsFromFirestore extends StatelessWidget {
   const _DocsFromFirestore({
     required this.uid,
@@ -714,16 +819,21 @@ class _DocsFromFirestore extends StatelessWidget {
   }
 
   String? _pickPreviewUrl(String docId, Map<String, dynamic> data) {
-    // Users/{uid}/docs/Passport  
     final preferredKeys = <String>[
-      docId, // "Passport"
-      docId.toLowerCase(), // "passport"
+      docId,
+      docId.toLowerCase(),
+      docId.toUpperCase(),
       'Passport',
       'passport',
+      'PASSPORT',
       'previewUrl',
+      'PreviewUrl',
+      'PREVIEWURL',
       'imageUrl',
+      'imageURL',
       'url',
       'coverUrl',
+      'coverURL',
     ];
 
     final direct = data['Passport']?.toString().trim();
@@ -741,10 +851,13 @@ class _DocsFromFirestore extends StatelessWidget {
     final v = _pick(
       data,
       const [
-        'passport no', 
+        'passport no',
         'Passport No',
+        'PASSPORT NO',
         'passport_no',
         'passportNo',
+        'PassportNo',
+        'PASSPORTNO',
       ],
       '',
     );
@@ -786,17 +899,19 @@ class _DocsFromFirestore extends StatelessWidget {
         final list = docs.map((d) {
           final data = d.data();
           final previewUrl = _pickPreviewUrl(d.id, data);
+          final title =
+              (data['title'] ?? data['Title'] ?? d.id).toString().trim();
 
-          final title = (data['title'] ?? d.id).toString().trim();
-
-       
-          final passportNo =
-              title.toLowerCase().contains('passport') ? _pickPassportNo(data) : null;
+          final passportNo = title.toLowerCase().contains('passport')
+              ? _pickPassportNo(data)
+              : null;
 
           return ProfileDocItem(
             id: d.id,
             title: title,
-            description: (data['description'] ?? '').toString().trim(),
+            description: (data['description'] ?? data['Description'] ?? '')
+                .toString()
+                .trim(),
             previewUrl: previewUrl,
             passportNo: passportNo,
           );
@@ -866,7 +981,6 @@ class _DocTileBig extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // LEFT ─── Text info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -879,8 +993,6 @@ class _DocTileBig extends StatelessWidget {
                       color: mycolors.textPrimary,
                     ),
                   ),
-
-                  // Show Passport No ONLY for Passport (from Firebase)
                   if (doc.title.toLowerCase().contains('passport')) ...[
                     const SizedBox(height: 6),
                     Text(
@@ -894,10 +1006,7 @@ class _DocTileBig extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(width: 12),
-
-            // RIGHT ─── Passport cover (small)
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Container(
@@ -905,10 +1014,7 @@ class _DocTileBig extends StatelessWidget {
                 height: 90,
                 color: mycolors.bgPrimary,
                 child: hasImage
-                    ? Image.network(
-                        doc.previewUrl!,
-                        fit: BoxFit.cover,
-                      )
+                    ? Image.network(doc.previewUrl!, fit: BoxFit.cover)
                     : Icon(
                         Icons.description,
                         color: mycolors.textSecondary,

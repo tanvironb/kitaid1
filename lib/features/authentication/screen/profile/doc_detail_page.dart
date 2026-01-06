@@ -698,7 +698,7 @@ class _DocDetailPageState extends State<DocDetailPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: mycolors.textPrimary,
                   fontSize: mysizes.fontMd,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
