@@ -380,21 +380,32 @@ class _HomePageState extends State<HomePage> {
                         children: [
                           GestureDetector(
                             onTap: () => Navigator.pushNamed(context, '/profile'),
-                            child: CircleAvatar(
-                              radius: 28,
-                              backgroundColor: scheme.secondaryContainer,
-                              backgroundImage:
-                                  (profile?.photoUrl?.isNotEmpty ?? false)
-                                      ? NetworkImage(profile!.photoUrl!)
-                                      : null,
-                              child: (profile?.photoUrl?.isNotEmpty ?? false)
-                                  ? null
-                                  : Icon(
-                                      Icons.person,
-                                      color: scheme.onSecondaryContainer,
-                                      size: 28,
-                                    ),
+                            child: Container(
+                              padding: const EdgeInsets.all(1), 
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: mycolors.Primary, 
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 28,
+                                backgroundColor: scheme.secondaryContainer,
+                                backgroundImage:
+                                    (profile?.photoUrl?.isNotEmpty ?? false)
+                                        ? NetworkImage(profile!.photoUrl!)
+                                        : null,
+                                child: (profile?.photoUrl?.isNotEmpty ?? false)
+                                    ? null
+                                    : Icon(
+                                        Icons.person,
+                                        color: scheme.onSecondaryContainer,
+                                        size: 28,
+                                      ),
+                              ),
                             ),
+
                           ),
                           const SizedBox(width: 12),
                           Expanded(

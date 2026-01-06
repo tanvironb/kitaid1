@@ -209,24 +209,33 @@ class _ProfilePageState extends State<ProfilePage> {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    CircleAvatar(
-                                      radius: 28,
-                                      backgroundColor:
-                                          theme.colorScheme.secondaryContainer,
-                                      backgroundImage: resolvedPhotoUrl.isNotEmpty
-                                          ? NetworkImage(resolvedPhotoUrl)
-                                          : const AssetImage(
-                                              'assets/images/profile_placeholder.png',
-                                            ) as ImageProvider,
-                                      child: resolvedPhotoUrl.isNotEmpty
-                                          ? null
-                                          : Icon(
-                                              Icons.person,
-                                              color: theme.colorScheme
-                                                  .onSecondaryContainer,
-                                              size: 26,
-                                            ),
+                                    Container(
+                                      padding: const EdgeInsets.all(2), 
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: mycolors.Primary, 
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 28,
+                                        backgroundColor: theme.colorScheme.secondaryContainer,
+                                        backgroundImage: resolvedPhotoUrl.isNotEmpty
+                                            ? NetworkImage(resolvedPhotoUrl)
+                                            : const AssetImage(
+                                                'assets/images/profile_placeholder.png',
+                                              ) as ImageProvider,
+                                        child: resolvedPhotoUrl.isNotEmpty
+                                            ? null
+                                            : Icon(
+                                                Icons.person,
+                                                color: theme.colorScheme.onSecondaryContainer,
+                                                size: 26,
+                                              ),
+                                      ),
                                     ),
+
                                     const SizedBox(width: 16),
                                     Column(
                                       crossAxisAlignment:

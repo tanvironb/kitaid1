@@ -25,7 +25,7 @@ class kitaid extends StatelessWidget {
       title: 'KitaID',
       theme: mytheme.LightTheme,
 
-      //AuthGate decides what to show after splash + biometric gate
+      // AuthGate decides what to show after splash + biometric gate
       home: const AuthGate(),
 
       routes: {
@@ -68,7 +68,6 @@ class kitaid extends StatelessWidget {
   }
 }
 
-
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -85,6 +84,7 @@ class _AuthGateState extends State<AuthGate> {
   // UI state for biometric gating
   bool _bioGateLoading = false;
   bool _bioGatePassed = false;
+  String? _bioError;
 
   @override
   void initState() {
@@ -104,48 +104,91 @@ class _AuthGateState extends State<AuthGate> {
 
     final bio = BiometricAuthService.instance;
 
-    setState(() => _bioGateLoading = true);
+    if (!mounted) return;
+    setState(() {
+      _bioGateLoading = true;
+      _bioError = null;
+    });
 
     try {
       final enabled = await bio.isEnabled();
       final supported = await bio.isDeviceSupported();
 
-      if (enabled && supported) {
-        final ok = await bio.authenticate(reason: 'Unlock KitaID');
-
-        if (!mounted) return;
-
-        if (ok) {
-          setState(() {
-            _bioGatePassed = true;
-            _bioGateLoading = false;
-          });
-        } else {
-          // fail -> sign out -> go login
-          await FirebaseAuth.instance.signOut();
-          if (!mounted) return;
-          setState(() {
-            _bioGatePassed = false;
-            _bioGateLoading = false;
-          });
-        }
-      } else {
-        // biometric OFF -> allow straight to home
+      // biometric OFF / not supported -> allow straight to home
+      if (!enabled || !supported) {
         if (!mounted) return;
         setState(() {
           _bioGatePassed = true;
           _bioGateLoading = false;
         });
+        return;
       }
+
+      final ok = await bio.authenticate(reason: 'Unlock KitaID');
+
+      if (!mounted) return;
+      setState(() {
+        _bioGatePassed = ok;
+        _bioGateLoading = false;
+        if (!ok) _bioError = 'Biometric authentication was cancelled or failed.';
+      });
     } catch (_) {
-      // if anything weird happens, fallback to login 
-      await FirebaseAuth.instance.signOut();
+      // IMPORTANT: do NOT sign out here
       if (!mounted) return;
       setState(() {
         _bioGatePassed = false;
         _bioGateLoading = false;
+        _bioError = 'Unable to authenticate with biometrics.';
       });
     }
+  }
+
+  void _retryBiometric() {
+    setState(() {
+      _bioCheckedThisSession = false;
+      _bioGateLoading = false;
+      _bioGatePassed = false;
+      _bioError = null;
+    });
+  }
+
+  Widget _lockScreen() {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock, size: 48),
+              const SizedBox(height: 12),
+              const Text(
+                'KitaID is locked',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _bioError ?? 'Please authenticate to continue.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _retryBiometric,
+                child: const Text('Try again'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () async {
+                  // manual logout only
+                  await FirebaseAuth.instance.signOut();
+                },
+                child: const Text('Log out'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -153,24 +196,33 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        //  Always show splash first
+        // Always show splash first
         if (_showSplash) {
           return const Splashscreen();
         }
 
-        //  Not logged in -> Login
+        // IMPORTANT: wait for Firebase to restore session on cold start
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // Not logged in -> Login
         if (!snapshot.hasData) {
           // reset biometric state for next login
           _bioCheckedThisSession = false;
           _bioGateLoading = false;
           _bioGatePassed = false;
+          _bioError = null;
           return const LoginScreen();
         }
 
-        //  Logged in -> run biometric gate once
-        if (!_bioCheckedThisSession && !_bioGateLoading) {
-          // start biometric gate (without blocking build)
-          Future.microtask(_runBiometricGate);
+        // Logged in -> run biometric gate once
+        if (!_bioCheckedThisSession && !_bioGateLoading && !_bioGatePassed) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _runBiometricGate();
+          });
         }
 
         // show loading while gating in progress
@@ -180,13 +232,13 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        //  If biometric gate passed -> Home
+        // If biometric gate passed -> Home
         if (_bioGatePassed) {
           return const HomePage();
         }
 
-        // Gate failed -> Login
-        return const LoginScreen();
+        // Logged in but locked (biometric required and not passed)
+        return _lockScreen();
       },
     );
   }
