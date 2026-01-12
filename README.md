@@ -138,8 +138,7 @@ All rights reserved by the authors.
 
 ## 📬 Contact
 For inquiries or collaboration:
-- Email: *(add your email here)*
-- GitHub: *(add repo link here)*
+- Email: tahmmed2001@gmail.com
 
 ---
 
