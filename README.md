@@ -362,7 +362,7 @@ Example:
 - Email/Password (if used)
   
 ### Firestore and Storage Rules
-If your project depends on Firestore and Storage, make sure their security rules are configured correctly in Firebase.
+###### If your project depends on Firestore and Storage, make sure their security rules are configured correctly in Firebase.
 ---
 
 ## 4. How to Run This Project in VS Code
